@@ -23,13 +23,13 @@
 - MySQL各欄位的清洗結果, 需與團隊確認正確/清晰程度
 - 自動化爬取"多年度"時, 資料爬取完整度亦需確認
 
-##### 附圖1: Python執行結果![[2026-01-17_Crawler_111year_Angie-1768641638270.webp||]]
-
+##### 附圖1: Python執行結果
+![Python執行結果](assets/2026-01-21_traffic-accidents-crawler-mysql-ingestion-01.webp)
 
 ##### 附圖2:  MySQL 內容呈現
-![[traffic_111_crawler_angie-1768592706314.webp||]]
+![MySQL內容呈現](assets/2026-01-21_traffic-accidents-crawler-mysql-ingestion-02.webp)
 
 ##### 附圖3: import folium, 產生111年全台各地的事故點(透過經緯度判別)
-![[Crawler-1768592054301.webp||]]
+![Folium事故點圖](assets/2026-01-21_traffic-accidents-crawler-mysql-ingestion-03.webp)
 
 

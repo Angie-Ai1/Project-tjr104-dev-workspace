@@ -6,7 +6,7 @@
 5. apply_view_adv.py             ：負責整合上面4個模組的資料, 並用 Folium 繪圖, 透過 Streamlit 顯示
 
 ## Demo
-![[2026-01-28 跨域資料整合 - 交通、氣象、夜市之空間分析 (folium & Streamlit)-1769534113223.webp]]
+![Demo](assets/2026-01-28_cross-domain-data-integration-folium-streamlit-1769534113223.webp)
 
 ## Summary
 #### 本週進度
