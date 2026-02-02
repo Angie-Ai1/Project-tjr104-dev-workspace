@@ -5,8 +5,11 @@
 4. import_view_manager.py：負責所有視覺呈現的邏輯，包含 Folium 地圖的底板建置、圖層堆疊、側邊欄選單排版，以及地圖彈窗（Popup）的 HTML 內容生成
 5. apply_view_adv.py             ：負責整合上面4個模組的資料, 並用 Folium 繪圖, 透過 Streamlit 顯示
 
+## System Flowchart / Data Pipeline
+![Data Pipeline](assets/2026-01-28_cross-domain-data-integration-folium-streamlit-02.webp)
+
 ## Demo
-![Demo](assets/2026-01-28_cross-domain-data-integration-folium-streamlit-1769534113223.webp)
+![Demo](assets/2026-01-28_cross-domain-data-integration-folium-streamlit-01.webp)
 
 ## Summary
 #### 本週進度
