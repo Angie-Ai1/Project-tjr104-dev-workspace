@@ -46,16 +46,27 @@
 - Demo / Screenshot:
 ![Streamlit Spatial Analysis Demo](doc_weekly_logs/assets/2026-01-28_cross-domain-data-integration-folium-streamlit-01.webp)
 
+
+### Week3: Performance Optimization & Regional Risk Analysis (1.5M+ Data)
+- 完成資料來源遷移與安全性提升：
+  - 成功將資料從 Local MySQL/.csv 遷移至 GCP Cloud SQL。
+  - 實作 db_utils.py 統一管理連線邏輯，並透過 SSH Tunnel 確保資料傳輸安全。
+
+- 模組化更新：
+db_utils.py：集中管理資料庫與 SSH 連線。
+import_weather_station.py：獨立處理測站空間配對邏輯。
+test_db_check.py：新增連線與資料完整性自動化測試指令。
+(Ongoing....)
+
 ---
 
 ## In Progress / Next Steps (研究中)
-### Week3:
-- 解決大資料量（約 400 萬筆）在 Folium/瀏覽器端渲染造成的卡頓/崩潰問題
+### Week4:
 - 研究方案：H3 空間索引分群（SQL GROUP BY 先算量）→ 前端只畫聚合結果；並評估 Redis 快取策略（TTL、避免 Base64、圖片壓縮 WebP）
-- 規劃資料來源遷移至 GCP-MySQL（端到端動態串接）
 
 ---
 
 ## Notes / Dev Logs
 -  Week1: Traffic accidents crawler → MySQL ingestion + 初版 Folium 地圖
 -  Week2: Cross-domain integration (Traffic + Weather + Night Market) + Streamlit → 展示與快取研究
+
