@@ -61,8 +61,8 @@
   - 車禍事故資訊 - 運用 Pandas Pivot Table 將直式資料轉為橫向報表，並新增「各年度統計」
 
 - Demo / Screenshot:
-![Overview](doc_weekly_logs/assets/2026-02-04_Performance Optimization & Regional Risk Analysis (1.5M+ Data)-01.webp)
-![Night_Market_view](doc_weekly_logs/assets/2026-02-04_Performance Optimization & Regional Risk Analysis (1.5M+ Data)-02.webp)
+![Overview](doc_weekly_logs/assets/2026-02-04_Performance_Optimization_&_Regional_Risk_Analysis_01.webp)
+![Night_Market_view](doc_weekly_logs/assets/2026-02-04_Performance_Optimization_&_Regional_Risk_Analysis_02.webp)
 
 ---
 

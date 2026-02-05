@@ -11,8 +11,8 @@
   - 車禍事故資訊 - 運用 Pandas Pivot Table 將直式資料轉為橫向報表，並新增「各年度統計」
 
 #### Demo
-![Overview](assets/2026-02-04_Performance Optimization & Regional Risk Analysis (1.5M+ Data)-01.webp)
-![Night_Market_view](assets/2026-02-04_Performance Optimization & Regional Risk Analysis (1.5M+ Data)-02.webp)
+![Overview](assets/2026-02-04_Performance_Optimization_&_Regional_Risk_Analysis_01.webp)
+![Night_Market_view](assets/2026-02-04_Performance_Optimization_&_Regional_Risk_Analysis_02.webp)
 
 #### 實作內容說明
 ##### 1. **資料庫連線設定(GCP VM ->MYSQL):
@@ -28,7 +28,7 @@
 		- **效能問題**：車禍總資料量達 **150 萬筆**，原始查詢 (Full Table Scan) 會導致 Python 連線逾時 (Timeout)。
 		- **解決方案**：在資料庫端建立經緯度索引 (`CREATE INDEX idx_lat_lon`)
 		- **執行成果**：空間搜尋速度從 **>30秒** 縮短至 **10秒內
-		![Night_Market_view](assets/2026-02-04_Performance Optimization & Regional Risk Analysis (1.5M+ Data)-03.webp)
+		![Night_Market_view](assets/2026-02-04_Performance_Optimization_&_Regional_Risk_Analysis_03.webp)
 	- 新增分析功能
 		- **區域風險指標 (KPI)**：
 			- 功能：`get_zone_stats`
@@ -37,12 +37,12 @@
 		- **事故分類統計 (Charts)**：
 			- 功能：`get_nearby_top10`
 			- 作用：統計範圍內的事故類型分佈 (例如：晴天 vs 雨天)
-			![Night_Market_view](assets/2026-02-04_Performance Optimization & Regional Risk Analysis (1.5M+ Data)-04.webp)
+			![Night_Market_view](assets/2026-02-04_Performance_Optimization_&_Regional_Risk_Analysis_04.webp)
 - 【import_weather_station.py】觀測站資料導入
 	- 專責處理空間點位的氣象測站配對
     - 修正氣象觀測站圖層，直接連動天氣 API 資料，在地圖上即時呈現測站位置與當前雨量。
 	- 修改 `import_traffic.py`：在地圖上加入「氣象觀測站」圖層
-	![Night_Market_view](assets/2026-02-04_Performance Optimization & Regional Risk Analysis (1.5M+ Data)-05.webp)
+	![Night_Market_view](assets/2026-02-04_Performance_Optimization_&_Regional_Risk_Analysis_05.webp)
 - 【import_view_manager.py】UI/UX優化
 	- **`render_sidebar`**：新增**「顯示氣象觀測站」** 的勾選框 (Checkbox)
 	- **`build_map`**：
