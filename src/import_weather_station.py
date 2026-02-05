@@ -1,10 +1,3 @@
-"""
-Weather Station Data Import Module
-1. 從 Cloud SQL (test_db.Obs_Stations) 讀取測站清單
-2. 計算指定座標 (夜市) 與所有測站的距離
-3. 回傳最近的測站資訊
-"""
-
 import pandas as pd
 import numpy as np
 from sqlalchemy import text
@@ -14,9 +7,6 @@ from db_utils import get_db_engine
 # 1. 取得所有觀測站資料
 # ==========================================
 def get_all_stations(engine=None):
-    """
-    從資料庫撈取所有氣象觀測站的經緯度與基本資料
-    """
     if engine is None:
         engine = get_db_engine()
     if not engine:
@@ -57,12 +47,11 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     使用 Haversine 公式計算地球上兩點的距離 (單位: 公里)
     """
     R = 6371  # 地球半徑 (km)
-    
+
     # 將角度轉為弧度
     phi1, phi2 = np.radians(lat1), np.radians(lat2)
     dphi = np.radians(lat2 - lat1)
     dlambda = np.radians(lon2 - lon1)
-    
     a = np.sin(dphi/2)**2 + np.cos(phi1) * np.cos(phi2) * np.sin(dlambda/2)**2
     c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
     
@@ -77,7 +66,7 @@ def find_nearest_station(target_lat, target_lon):
     df_stations = get_all_stations()
     
     if df_stations.empty:
-        print("⚠️ 找不到任何測站資料")
+        print("找不到任何測站資料")
         return None, 0
 
     # 2. 計算目標點與所有測站的距離 (向量化運算)
@@ -113,4 +102,4 @@ if __name__ == "__main__":
         print(f"直線距離：{dist:.2f} 公里")
         print("-" * 30)
     else:
-        print("❌ 測試失敗")
+        print("測試失敗")

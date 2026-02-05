@@ -1,8 +1,7 @@
 import os
 import requests
-import urllib3
+import urllib3 
 from dotenv import load_dotenv
-import csv
 
 # ==========================================
 # 在模組內載入環境變數，確保能讀到 API Key
@@ -13,7 +12,6 @@ def fetch_weather_data():
     """
     獨立的氣象抓取模組
     回傳: heat_data, rain_info, raining_only, top_station
-    同時將 rain_info 存檔為 weather_data.csv
     """
     print("--- 正在呼叫氣象局 API ---")
     api_key = os.getenv("CWA_API_KEY")

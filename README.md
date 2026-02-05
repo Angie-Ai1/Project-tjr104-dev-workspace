@@ -49,24 +49,36 @@
 
 ### Week3: Performance Optimization & Regional Risk Analysis (1.5M+ Data)
 - 完成資料來源遷移與安全性提升：
-  - 成功將資料從 Local MySQL/.csv 遷移至 GCP Cloud SQL。
-  - 實作 db_utils.py 統一管理連線邏輯，並透過 SSH Tunnel 確保資料傳輸安全。
+  - 成功將資料從 Local MySQL/.csv 遷移至 GCP VM -> MYSQL
+  - 實作 db_utils.py 統一管理連線邏輯，並透過 SSH Tunnel 確保資料傳輸安全
 
-- 模組化更新：
-db_utils.py：集中管理資料庫與 SSH 連線。
-import_weather_station.py：獨立處理測站空間配對邏輯。
-test_db_check.py：新增連線與資料完整性自動化測試指令。
-(Ongoing....)
+- 效能優化
+  - 全台概覽模式：實作 **SQL 格網聚合技術** (`GROUP BY ROUND(lat, 2)`)，將 150 萬筆原始資料轉化為輕量級熱力圖數據
+  - 對單一夜市半徑搜尋，設定 LIMIT 800 並按時間排序（只抓最新），確保地圖標記清晰且載入快速
+  - 快取機制：導入 st.cache_data 與 st.cache_resource，大幅減少重複的 SQL 查詢與資料庫連線，將地圖切換時間從20~30秒縮短至3秒
+
+- UI/UX優化
+  - 車禍事故資訊 - 運用 Pandas Pivot Table 將直式資料轉為橫向報表，並新增「各年度統計」
+
+- Demo / Screenshot:
+![Overview](doc_weekly_logs/assets/2026-02-04_Performance Optimization & Regional Risk Analysis (1.5M+ Data)-01.webp)
+![Night_Market_view](doc_weekly_logs/assets/2026-02-04_Performance Optimization & Regional Risk Analysis (1.5M+ Data)-02.webp)
 
 ---
 
-## In Progress / Next Steps (研究中)
-### Week4:
-- 研究方案：H3 空間索引分群（SQL GROUP BY 先算量）→ 前端只畫聚合結果；並評估 Redis 快取策略（TTL、避免 Base64、圖片壓縮 WebP）
+## Next Steps
+### Week4: (2/11)
+- [架構評估] 持續優化地理空間索引 (H3 評估) 與 分散式快取 (Redis 導入規劃)
+- [數據分析] 實作事故與天氣關聯性分析：鎖定特定夜市周邊觀測站之歷史氣象數據
+
+### Week4: (2/15)
+- [視覺化] 導入多維度統計圖表 (Plotly/Altair)：包含事故主因(圓餅圖)、各項因素(長條圖)及歷年趨勢折線圖
+- [前端優化] 整合即時天氣與夜市連動功能，支援自定義日期時間篩選
 
 ---
 
 ## Notes / Dev Logs
 -  Week1: Traffic accidents crawler → MySQL ingestion + 初版 Folium 地圖
 -  Week2: Cross-domain integration (Traffic + Weather + Night Market) + Streamlit → 展示與快取研究
+-  Week3: Performance Optimization & Regional Risk Analysis (1.5M+ Data)
 

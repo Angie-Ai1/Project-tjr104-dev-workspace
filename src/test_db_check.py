@@ -37,7 +37,7 @@ def inspect_table(engine, db_name, table_name):
                 print("(NO DATA)")
                 
     except Exception as e:
-        print(f"❌ Failed to inspect table: {e}")
+        print(f"Failed to inspect table: {e}")
 
 def main():
     # 1. 取得資料庫連線 (會自動觸發 SSH Tunnel)
@@ -45,11 +45,11 @@ def main():
     engine = get_db_engine()
     
     if not engine:
-        print("❌ Connection failed. Please check .env and db_utils.py")
+        print("Connection failed. Please check .env and db_utils.py")
         return
 
     # 2. 定義要檢查的目標清單 (資料庫名稱, 資料表名稱)
-    # ⚠️ Cloud SQL的表分別在不同的資料庫底下
+    # ⚠️ MYSQL的表分別在不同的資料庫底下
     target_tables = [
         ("test_db", "accident_main"),
         ("test_db", "Obs_Stations"),
@@ -61,7 +61,7 @@ def main():
     for db, table in target_tables:
         inspect_table(engine, db, table)
 
-    print("\n✅ finish checking all tables.")
+    print("\nfinish checking all tables.")
 
 if __name__ == "__main__":
     main()

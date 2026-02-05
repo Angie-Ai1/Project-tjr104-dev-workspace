@@ -7,19 +7,13 @@ from sqlalchemy import create_engine  # 用於建立資料庫連線物件 (Engin
 from sqlalchemy.engine import make_url # 用於解析資料庫連線字串 (把 URL 拆解成 user, host, port...)
 from dotenv import load_dotenv  # 載入 .env 檔案
 
-# 1. 載入 .env 檔案中的設定
-# 這樣才能讀取到 VM_NAME, DATABASE_URL 
-load_dotenv()
 
-# 定義一個全域變數, 用來存放 SSH Tunnel 的處理程序 (Process)
+# 定義一個全域變數, 用來存放 SSH Tunnel 的處理程序
 # 這樣才能在程式結束時找到它, 並將其關閉
+load_dotenv()
 _tunnel_process = None
 
 def is_port_open(host, port):
-    """
-    檢查本機的某個 Port 是否已經被占用 (代表通道可能已經開了)
-    如果通了回傳 True, 沒通回傳 False
-    """
     # 建立一個 socket 物件 (像是一支電話)
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.settimeout(1)  # 設定超時時間為 1 秒, 如果 1 秒沒連上就算失敗, 避免卡住
@@ -27,7 +21,7 @@ def is_port_open(host, port):
     try:
         # 嘗試連線到指定的 host 和 port
         s.connect((host, int(port)))
-        s.shutdown(2) # 如果連線成功, 馬上斷開 (只是要確認通不通, 不是要傳資料)
+        s.shutdown(2) # 連線成功, 馬上斷開(連線確定用)
         return True   # 連線成功
     except:
         return False  # 連線失敗
@@ -39,21 +33,20 @@ def start_ssh_tunnel(local_port):
     自動執行 gcloud 指令, 建立 SSH Tunnel (地道)
     local_port: 希望在本機開在哪個 Port (例如 3307)
     """
-    global _tunnel_process # 宣告我們要修改外面的那個全域變數
+    global _tunnel_process # 宣告修改外面的全域變數
     
-    # 從環境變數讀取 VM 的連線資訊
+    # 從.env讀取 VM 的連線資訊
     vm_name = os.getenv("VM_NAME")       # 例如: test_db
     zone = os.getenv("VM_ZONE")          # 例如: asia-east1-c
     project = os.getenv("PROJECT_ID")    # 例如: watchful-net-xxxxx
     
-    # 檢查防呆：如果本機 Port 已經通了, 就不用再開一次 gcloud, 直接離開
     if is_port_open("127.0.0.1", local_port):
-        # print(f"✅ SSH 通道已存在 (Port {local_port}), 直接使用現有通道")
+        # print(f"SSH 通道已存在 (Port {local_port}), 直接使用現有通道")
         return
 
-    print(f"🔄 偵測到 Port {local_port} 未開啟, 正在建立 SSH Tunnel 連線到 {vm_name}...")
+    print(f"偵測到 Port {local_port} 未開啟, 正在建立 SSH Tunnel 連線到 {vm_name}...")
     
-    # 組合 gcloud 指令 (這就是你原本手打的那串, 但拆成 List 格式)
+    # 組合 gcloud 指令 (拆成 List 格式)
     # 格式: gcloud compute ssh [VM] --zone [ZONE] --project [ID] --tunnel-through-iap -- -N -L [LOCAL]:localhost:3306
     cmd = [
         "gcloud", "compute", "ssh", vm_name,
@@ -83,17 +76,15 @@ def start_ssh_tunnel(local_port):
     
     # 再次檢查 Port, 確認連線是否成功
     if is_port_open("127.0.0.1", local_port):
-        print("✅ SSH Tunnel 建立成功！資料庫連線準備就緒")
+        print("SSH Tunnel 建立成功！資料庫連線準備就緒")
     else:
-        print("❌ SSH Tunnel 建立失敗！請檢查網路或 gcloud login 狀態")
+        print("SSH Tunnel 建立失敗！請檢查網路或 gcloud login 狀態")
 
+# 負責關閉 gcloud 背景程式, 如果不關掉, Port 會一直被佔用, 下次執行會報錯
 def cleanup_tunnel():
-    """
-    負責關閉 gcloud 背景程式, 如果不關掉, Port 會一直被佔用, 下次執行會報錯
-    """
     global _tunnel_process
     if _tunnel_process:
-        print("🔻 正在關閉 SSH Tunnel...")
+        print("正在關閉 SSH Tunnel...")
         _tunnel_process.terminate() # 強制終止程序
         _tunnel_process = None
 
@@ -105,34 +96,22 @@ def get_db_engine():
     主函式：取得資料庫連線引擎 (Engine)
     它會自動處理 URL 解析、通道建立、以及連線物件生成
     """
-    # 1. 讀取 .env 裡的 CLOUDSQL_URL
-    db_url = os.getenv("CLOUDSQL_URL")
-    
-    # 防呆：如果沒設定 URL, 印出錯誤並回傳 None
-    if not db_url:
-        print("❌ 錯誤: .env 檔案中找不到 CLOUDSQL_URL 設定")
-        return None
 
+    # 如果沒設定 URL, 印出錯誤並回傳 None
+    db_url = os.getenv("MYSQLSQL_URL") 
+    if not db_url: 
+        print("錯誤: .env 檔案中找不到 MYSQL_URL 設定")
+        return None
     try:
-        # 2. 解析 URL (把字串變成物件, 方便抓出 Port)
-        # 例如: mysql+pymysql://root:pass@127.0.0.1:3307/db -> 抓出 port=3307
         url_obj = make_url(db_url)
         target_port = url_obj.port
-        
-        # 如果 URL 沒寫 Port, 預設 3307
         if not target_port:
             target_port = 3307
             print(f"⚠️ URL 未指定 Port, 預設使用 {target_port}")
-
-        # 3. 呼叫函式建立 SSH Tunnel (如果已經通了, 裡面會自己跳過)
         start_ssh_tunnel(target_port)
-        
-        # 4. 建立 SQLAlchemy Engine
-        # pool_recycle=3600 代表每小時回收一次連線, 避免 MySQL 因為太久沒動靜而斷線
-        engine = create_engine(db_url, pool_recycle=3600)
-        
+        engine = create_engine(db_url, pool_recycle=3600) # pool_recycle=3600 每小時回收連線一次)
         return engine
         
     except Exception as e:
-        print(f"❌ 資料庫連線初始化失敗: {e}")
+        print(f"資料庫連線初始化失敗: {e}")
         return None
