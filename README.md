@@ -1,5 +1,5 @@
 ## Spatial Analysis Project (Traffic × Weather × Night Market)
-本專案目標：整合交通事故、即時氣象、夜市資料，做互動式地圖呈現與空間分析（Folium + Streamlit）[WIP]
+專案目標：整合交通事故、即時氣象、夜市資料，做互動式地圖呈現與空間分析（Folium + Streamlit）[WIP]
 
 ---
 
@@ -7,7 +7,7 @@
 - 目前實作項目已遷移至 Poetry 管理環境
 - 安裝環境：poetry install
 - 變數設定：參考 .env.template 建立 .env
-- 執行專案：poetry run streamlit run src/apply_view_adv.py
+- 執行專案：poetry run streamlit run src/r_app.py
 
 ---
 
@@ -16,15 +16,14 @@
 - MySQL（資料儲存與查詢驗證）
 - Folium / Leaflet（互動式地圖輸出）
 - Streamlit（前端互動與展示）
-- Airflow - Redis
-(ongoing...)
+- Airflow - Redis (ongoing...)
 
 ---
 ## Notes / Dev Logs
 -  Week1: Traffic accidents crawler → MySQL ingestion + 初版 Folium 地圖
 -  Week2: Cross-domain integration (Traffic + Weather + Night Market) + Streamlit → 展示與快取研究
 -  Week3: Performance Optimization & Regional Risk Analysis (1.5M+ Data)
--  Week4: ETL
+-  Week4: Architecture Standardization and Data Insights
 
 ---
 
@@ -72,7 +71,7 @@
 ![Overview](doc_weekly_logs/assets/2026-02-04_Performance_Optimization_&_Regional_Risk_Analysis_01.webp)
 ![Night_Market_view](doc_weekly_logs/assets/2026-02-04_Performance_Optimization_&_Regional_Risk_Analysis_02.webp)
 
-### Week4:
+### Week4: Architecture Standardization and Data Insights
 - **系統架構重構 **：採用 **R / C / V 分層設計**
     - 考量專案擴展性，將檔案結構由傳統 ETL 命名轉向 **Layered Architecture**：
         - **R (Run)**：基礎設施連線與入口（如 `r_cache.py`, `r_app.py`）
@@ -100,15 +99,11 @@
 - **前端頁面擴增**
 	- 運用 Streamlit 原生 `pages/` 架構，擴增歷年趨勢分析(`v_hist_trend.py`) 以及禮讓行人政策成效分析 (`v_policy_impact.py)` 等獨立頁面
 - **Demo / Screenshot**:
-![Overview](assets/2026-02-13_Architecture_Standardization_and_Data_Insights_01.png)
+![Overview](doc_weekly_logs/assets/2026-02-13_Architecture_Standardization_and_Data_Insights_01.png)
 
 ---
 
 ## Next Steps
-### Week4: (2/11)
-- [架構評估] 持續優化地理空間索引 (H3 評估) 與 分散式快取 (Redis 導入規劃)
-- [數據分析] 實作事故與天氣關聯性分析：鎖定特定夜市周邊觀測站之歷史氣象數據
-
 ### Week5: (2/28)
 - [前端優化] 夜市區域分析頁面功能客製化：實作特定區域(距離)之互動式篩選
 - [效能深化] 評估 MySQL View 轉實體表 (Materialized Table) 之可行性：測試實體化存取對大規模空間查詢的加速成效
@@ -120,4 +115,4 @@
 
 ### Week7: (3/08)
 - [成果整合] 系統穩定度最終測試與 UI/UX 調校：確保跨領域數據（事故、氣象、夜市）在容器環境下之整合流暢度
-- [技術彙整] 製作專題技術簡報
+- [技術彙整] 製作專題技術簡報docs: update README for Week 4
