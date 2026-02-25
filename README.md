@@ -73,15 +73,13 @@
 ![Night_Market_view](doc_weekly_logs/assets/2026-02-04_Performance_Optimization_&_Regional_Risk_Analysis_02.webp)
 
 ### Week4:
-- **系統架構重構 (Architecture Refactoring)**：採用 **R / C / V 分層設計**
+- **系統架構重構 **：採用 **R / C / V 分層設計**
     - 考量專案擴展性，將檔案結構由傳統 ETL 命名轉向 **Layered Architecture**：
         - **R (Run)**：基礎設施連線與入口（如 `r_cache.py`, `r_app.py`）
         - **C (Core Service)**：計算邏輯與跨來源資料整合
         - **V (View)**：UI 介面呈現與地圖渲染
     - 導入 Streamlit **多頁面架構 **：運用 `pages/` 資料夾實現功能模組化
 ```
-Project_Root/
-<<<<<<< HEAD
 ├── r_app.py                  # 主程式，只有指揮邏輯
 ├── r_cache.py                # Redis 快取
 ├── c_data_service.py         # 資料層 (整合了 NightMarket, Weather, Traffic)
@@ -91,30 +89,15 @@ Project_Root/
 │       ├─ v_dashboard.py       # 夜市區域分析
 │       ├─ v_hist_trend.py      # 歷年趨勢分析
 └────── └─ v_policy_impact.py   # 禮讓行人政策成效分析
-=======
-├── r_app.py                  # [Controller] 主程式，只有指揮邏輯，沒有實作細節
-├── r_cache.py                # [Infra]  Redis 快取
-├── c_data_service.py         # [Model]   資料層 (整合了 NightMarket, Weather, Traffic)
-├── c_ui.py                   # [View]    介面層 (只包含跟 **Streamlit** 和 **Folium** 有關的程式碼) (原 import_view_manager.py)
-├── c_db.py                   # [Infra]   資料庫連線
-├────── pages/                # [View] Streamlit 自動多頁導覽資料夾
-│       ├─ v_dashboard.py     # 夜市區域分析
-│       ├─ v_hist_trend.py    # 歷年趨勢分析
-└────── └─ v_policy_impact.py # 禮讓行人政策成效分析
->>>>>>> ee559306e705fd3fff044f38b7e69f273278a2b4
 ```
 
-- **效能與資料工程優化 (Backend & Data Engineering)**
+- **效能與資料工程優化**
     - **MySQL 索引優化**：於事故主表建立 `idx_lat_lon` 座標索引，配合 **BBOX (地理圍欄)** 實現效能優化
     - **資料庫視圖 (View)**：建立 `view_accident_analysis` 預先關聯「主表 (Main)」、「肇因 (Process)」與「當事人 (Human)」，降低前端 SQL 複雜度
     - **Redis 分散式快取**：實作 **「DB 運算 ➔ Redis 存儲 ➔ Python 調用」** 流程，減輕雲端資料庫 I/O 負擔並縮短地圖載入時間
-<<<<<<< HEAD
-- **多維度數據洞察** (Visualization & Insights)
-=======
-- **多維度數據洞察 (Visualization & Insights)
->>>>>>> ee559306e705fd3fff044f38b7e69f273278a2b4
-    - **專業統計圖表**：整合 **Plotly / Altair** 繪製「事故主因圓餅圖」、「影響因素長條圖」及「歷年趨勢折線圖」
-- 前端頁面擴增
+- **多維度數據洞察**
+    - 整合 **Plotly / Altair** 繪製「事故主因圓餅圖」、「影響因素長條圖」及「歷年趨勢折線圖」
+- **前端頁面擴增**
 	- 運用 Streamlit 原生 `pages/` 架構，擴增歷年趨勢分析(`v_hist_trend.py`) 以及禮讓行人政策成效分析 (`v_policy_impact.py)` 等獨立頁面
 - **Demo / Screenshot**:
 ![Overview](assets/2026-02-13_Architecture_Standardization_and_Data_Insights_01.png)
