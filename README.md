@@ -1,5 +1,5 @@
 ## Spatial Analysis Project (Traffic × Weather × Night Market)
-本專案目標：整合交通事故、即時氣象、夜市資料，做互動式地圖呈現與空間分析（Folium + Streamlit）[WIP]
+專案目標：整合交通事故、即時氣象、夜市資料，做互動式地圖呈現與空間分析（Folium + Streamlit）[WIP]
 
 ---
 
@@ -7,7 +7,7 @@
 - 目前實作項目已遷移至 Poetry 管理環境
 - 安裝環境：poetry install
 - 變數設定：參考 .env.template 建立 .env
-- 執行專案：poetry run streamlit run src/apply_view_adv.py
+- 執行專案：poetry run streamlit run src/r_app.py
 
 ---
 
@@ -16,15 +16,14 @@
 - MySQL（資料儲存與查詢驗證）
 - Folium / Leaflet（互動式地圖輸出）
 - Streamlit（前端互動與展示）
-- Airflow - Redis
-(ongoing...)
+- Airflow - Redis (ongoing...)
 
 ---
 ## Notes / Dev Logs
 -  Week1: Traffic accidents crawler → MySQL ingestion + 初版 Folium 地圖
 -  Week2: Cross-domain integration (Traffic + Weather + Night Market) + Streamlit → 展示與快取研究
 -  Week3: Performance Optimization & Regional Risk Analysis (1.5M+ Data)
--  Week4: ETL
+-  Week4: Architecture Standardization and Data Insights
 
 ---
 
@@ -72,16 +71,14 @@
 ![Overview](doc_weekly_logs/assets/2026-02-04_Performance_Optimization_&_Regional_Risk_Analysis_01.webp)
 ![Night_Market_view](doc_weekly_logs/assets/2026-02-04_Performance_Optimization_&_Regional_Risk_Analysis_02.webp)
 
-### Week4:
-- **系統架構重構 (Architecture Refactoring)**：採用 **R / C / V 分層設計**
+### Week4: Architecture Standardization and Data Insights
+- **系統架構重構 **：採用 **R / C / V 分層設計**
     - 考量專案擴展性，將檔案結構由傳統 ETL 命名轉向 **Layered Architecture**：
         - **R (Run)**：基礎設施連線與入口（如 `r_cache.py`, `r_app.py`）
         - **C (Core Service)**：計算邏輯與跨來源資料整合
         - **V (View)**：UI 介面呈現與地圖渲染
     - 導入 Streamlit **多頁面架構 **：運用 `pages/` 資料夾實現功能模組化
 ```
-Project_Root/
-<<<<<<< HEAD
 ├── r_app.py                  # 主程式，只有指揮邏輯
 ├── r_cache.py                # Redis 快取
 ├── c_data_service.py         # 資料層 (整合了 NightMarket, Weather, Traffic)
@@ -91,41 +88,22 @@ Project_Root/
 │       ├─ v_dashboard.py       # 夜市區域分析
 │       ├─ v_hist_trend.py      # 歷年趨勢分析
 └────── └─ v_policy_impact.py   # 禮讓行人政策成效分析
-=======
-├── r_app.py                  # [Controller] 主程式，只有指揮邏輯，沒有實作細節
-├── r_cache.py                # [Infra]  Redis 快取
-├── c_data_service.py         # [Model]   資料層 (整合了 NightMarket, Weather, Traffic)
-├── c_ui.py                   # [View]    介面層 (只包含跟 **Streamlit** 和 **Folium** 有關的程式碼) (原 import_view_manager.py)
-├── c_db.py                   # [Infra]   資料庫連線
-├────── pages/                # [View] Streamlit 自動多頁導覽資料夾
-│       ├─ v_dashboard.py     # 夜市區域分析
-│       ├─ v_hist_trend.py    # 歷年趨勢分析
-└────── └─ v_policy_impact.py # 禮讓行人政策成效分析
->>>>>>> ee559306e705fd3fff044f38b7e69f273278a2b4
 ```
 
-- **效能與資料工程優化 (Backend & Data Engineering)**
+- **效能與資料工程優化**
     - **MySQL 索引優化**：於事故主表建立 `idx_lat_lon` 座標索引，配合 **BBOX (地理圍欄)** 實現效能優化
     - **資料庫視圖 (View)**：建立 `view_accident_analysis` 預先關聯「主表 (Main)」、「肇因 (Process)」與「當事人 (Human)」，降低前端 SQL 複雜度
     - **Redis 分散式快取**：實作 **「DB 運算 ➔ Redis 存儲 ➔ Python 調用」** 流程，減輕雲端資料庫 I/O 負擔並縮短地圖載入時間
-<<<<<<< HEAD
-- **多維度數據洞察** (Visualization & Insights)
-=======
-- **多維度數據洞察 (Visualization & Insights)
->>>>>>> ee559306e705fd3fff044f38b7e69f273278a2b4
-    - **專業統計圖表**：整合 **Plotly / Altair** 繪製「事故主因圓餅圖」、「影響因素長條圖」及「歷年趨勢折線圖」
-- 前端頁面擴增
+- **多維度數據洞察**
+    - 整合 **Plotly / Altair** 繪製「事故主因圓餅圖」、「影響因素長條圖」及「歷年趨勢折線圖」
+- **前端頁面擴增**
 	- 運用 Streamlit 原生 `pages/` 架構，擴增歷年趨勢分析(`v_hist_trend.py`) 以及禮讓行人政策成效分析 (`v_policy_impact.py)` 等獨立頁面
 - **Demo / Screenshot**:
-![Overview](assets/2026-02-13_Architecture_Standardization_and_Data_Insights_01.png)
+![Overview](doc_weekly_logs/assets/2026-02-13_Architecture_Standardization_and_Data_Insights_01.png)
 
 ---
 
 ## Next Steps
-### Week4: (2/11)
-- [架構評估] 持續優化地理空間索引 (H3 評估) 與 分散式快取 (Redis 導入規劃)
-- [數據分析] 實作事故與天氣關聯性分析：鎖定特定夜市周邊觀測站之歷史氣象數據
-
 ### Week5: (2/28)
 - [前端優化] 夜市區域分析頁面功能客製化：實作特定區域(距離)之互動式篩選
 - [效能深化] 評估 MySQL View 轉實體表 (Materialized Table) 之可行性：測試實體化存取對大規模空間查詢的加速成效
@@ -137,4 +115,4 @@ Project_Root/
 
 ### Week7: (3/08)
 - [成果整合] 系統穩定度最終測試與 UI/UX 調校：確保跨領域數據（事故、氣象、夜市）在容器環境下之整合流暢度
-- [技術彙整] 製作專題技術簡報
+- [技術彙整] 製作專題技術簡報docs: update README for Week 4
