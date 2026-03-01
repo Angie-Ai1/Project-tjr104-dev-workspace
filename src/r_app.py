@@ -100,11 +100,13 @@ def main():
         m = ui.build_map(
             is_overview = True,
             target_market = None,
-            layers = home_layers,
-            weather_data = None,
+            layers = layers,
+            dynamic_zoom = None,  
+            radius_m = 500,       # 半徑參數
             traffic_global = traffic_global,
             df_local = None,
-            df_market = df_market)
+            df_market = df_market
+        )
 
         # 顯示地圖
         st_folium(m, height=800, use_container_width=True, returned_objects=[])

@@ -169,7 +169,10 @@ def get_nearby_accidents(lat, lon, radius_km=0.5, sample=True):
 
     if sample:
         # 將上限調高到 1000 點，確保畫面豐富度，同時保護前端效能
-        map_df = df.sample(n=1000, random_state=42) if len(df) > 1000 else df
+        if len(df) > 1000:
+            map_df = df.sort_values(by=['death_count', 'injury_count'], ascending=False).head(1000)
+        else:
+            map_df = df
     else:
         map_df = df
     result = (map_df, stats, charts, yearly_stats)

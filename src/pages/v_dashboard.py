@@ -67,8 +67,8 @@ def main():
         with c_year: st.info("👈 選擇夜市啟用年份篩選")
         with c_kpi: st.info("👈 選擇夜市後將顯示關鍵數據")
         st.markdown("---")
-        m = ui.build_map(True, None, layers, None, traffic_global, None, df_market)
-        st_folium(m, height=700, use_container_width=True, returned_objects=[])
+        m = ui.build_map(True, None, layers, None, 500, traffic_global, None, df_market)
+        st_folium(m, height=700, width="stretch", returned_objects=[])
         return
 
     # --- 單一夜市模式 ---
@@ -150,13 +150,30 @@ def main():
         k4.metric("🌧️ 雨天比例", f"{rain_ratio:.1f}%")
 
     # =========================================================
-    # 繼續繪製下方地圖與圖表
+    # 繪製下方地圖與圖表
     # =========================================================
     with col_main:
-        # 對地圖進行 1000 筆隨機抽樣，保護瀏覽器效能
-        df_for_map = df_filtered.sample(n=min(1000, len(df_filtered)), random_state=42) if not df_filtered.empty else df_filtered
-        m = ui.build_map(False, target_market, layers, None, None, df_for_map, df_market)
-        st_folium(m, height=500, use_container_width=True, returned_objects=[])
+        # 1. 確保死亡事故優先保留，不隨機抽樣
+        if len(df_filtered) > 1000:
+            df_for_map = df_filtered.sort_values(by=['death_count', 'injury_count'], ascending=False).head(1000)
+        else:
+            df_for_map = df_filtered
+
+        # 2. 根據滑桿半徑動態計算縮放級別
+        if radius_m <= 500:
+            d_zoom = 16
+        elif radius_m <= 1000:
+            d_zoom = 15
+        elif radius_m <= 2000:
+            d_zoom = 14
+        elif radius_m <= 3000:
+            d_zoom = 13
+        else:
+            d_zoom = 12
+
+        # 3. 將 d_zoom 傳入地圖，並將 use_container_width 修正為最新語法 width="stretch"
+        m = ui.build_map(False, target_market, layers, d_zoom, radius_m, None, df_for_map, df_market)
+        st_folium(m, height=500, width="stretch", returned_objects=[])
 
 
     # --- 中欄：天候風險 ---

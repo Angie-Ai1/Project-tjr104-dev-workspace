@@ -24,8 +24,8 @@ def render_sidebar(df_market):
     st.sidebar.header("🔍 篩選導航")
 
     layers = {
-        "traffic_heat": st.sidebar.checkbox("🔥 全台車禍熱區", key='show_traffic_heat'),
-        "night_market": st.sidebar.checkbox("🏠 夜市位置", key='show_night_market'),
+        "traffic_heat": st.sidebar.checkbox("🔥 全台車禍熱區", value=True, key='show_traffic_heat'),
+        "night_market": st.sidebar.checkbox("🏠 夜市位置", value=True, key='show_night_market'),
         "weather": st.sidebar.checkbox("🌧️ 降雨熱力", key='show_weather'),
         "accidents": st.sidebar.checkbox("🔵 周邊事故詳情", key='show_accidents')}
 
@@ -48,11 +48,13 @@ def page_timer():
 # ==========================================
 # 2. 地圖 (Map)
 # ==========================================
-def build_map(is_overview, target_market, layers, weather_data, traffic_global, df_local, df_market):
+def build_map(is_overview, target_market, layers, dynamic_zoom, radius_m, traffic_global, df_local, df_market):
     if is_overview: 
         loc, zoom = [23.7, 120.95], 8
     elif target_market is not None: 
-        loc, zoom = [target_market['lat'], target_market['lon']], 16
+        loc = [target_market['lat'], target_market['lon']]
+        # 接收 v_dashboard 傳來的動態縮放值，若無則預設 16
+        zoom = dynamic_zoom if dynamic_zoom is not None else 16
     else: 
         loc, zoom = [25.03, 121.56], 12
 
@@ -65,7 +67,7 @@ def build_map(is_overview, target_market, layers, weather_data, traffic_global, 
         fg_m = folium.FeatureGroup(name="夜市")
         if target_market is not None:
             folium.Marker([target_market['lat'], target_market['lon']], icon=folium.Icon(color='purple', icon='star', prefix='fa'), tooltip=target_market['MarketName']).add_to(fg_m)
-            folium.Circle([target_market['lat'], target_market['lon']], radius=500, color='orange', fill=True, fill_opacity=0.1).add_to(fg_m)
+            folium.Circle([target_market['lat'], target_market['lon']], radius=radius_m, color='orange', fill=True, fill_opacity=0.1).add_to(fg_m)
         else:
             for _, r in df_market.iterrows():
                 folium.CircleMarker([r['lat'], r['lon']], radius=3, color='purple', tooltip=r['MarketName']).add_to(fg_m)
