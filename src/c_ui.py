@@ -23,103 +23,28 @@ def render_sidebar(df_market):
 
     st.sidebar.header("🔍 篩選導航")
 
-    # 初始化圖層狀態 (確保夜市和事故預設是勾選的)
-    if "show_traffic_heat" not in st.session_state: st.session_state["show_traffic_heat"] = False # 熱力圖預設關閉(避免雜亂)
-    if "show_night_market" not in st.session_state: st.session_state["show_night_market"] = True  # 預設開啟
-    if "show_weather" not in st.session_state: st.session_state["show_weather"] = False
-    if "show_accidents" not in st.session_state: st.session_state["show_accidents"] = True        # 預設開啟
-
-    # 初始化導航預設值
-    if 'nav_district' not in st.session_state: st.session_state['nav_district'] = "北部"
-    if 'nav_city' not in st.session_state: st.session_state['nav_city'] = "臺北市"
-    if 'nav_market' not in st.session_state: st.session_state['nav_market'] = "士林夜市"
-
-    # [區域選單]
-    dist_opts = sorted(df_market['District'].unique()) if not df_market.empty else []
-    dist_opts = [x for x in dist_opts if x.lower() not in ['nan', 'none', '']]
-    
-    if st.session_state['nav_district'] not in dist_opts and dist_opts:
-        st.session_state['nav_district'] = dist_opts[0]
-
-    def update_dist():
-        st.session_state['nav_district'] = st.session_state['w_dist']
-        filtered = df_market[df_market['District'] == st.session_state['w_dist']]
-        if not filtered.empty:
-            valid_cities = sorted(filtered['City'].unique())
-            if valid_cities:
-                st.session_state['nav_city'] = valid_cities[0]
-
-    sel_dist = st.sidebar.selectbox(
-        "1️⃣ 區域", 
-        dist_opts, 
-        index=dist_opts.index(st.session_state['nav_district']) if st.session_state['nav_district'] in dist_opts else 0,
-        key='w_dist',
-        on_change=update_dist
-    )
-
-    # [縣市選單]
-    df_city_filtered = df_market[df_market['District'] == sel_dist]
-    city_opts = sorted(df_city_filtered['City'].unique()) if not df_city_filtered.empty else []
-    
-    if st.session_state['nav_city'] not in city_opts and city_opts:
-        st.session_state['nav_city'] = city_opts[0]
-
-    def update_city():
-        st.session_state['nav_city'] = st.session_state['w_city']
-
-    sel_city = st.sidebar.selectbox(
-        "2️⃣ 縣市", 
-        city_opts, 
-        index=city_opts.index(st.session_state['nav_city']) if st.session_state['nav_city'] in city_opts else 0,
-        key='w_city',
-        on_change=update_city
-    )
-
-    # [夜市選單]
-    df_m = df_city_filtered[df_city_filtered['City'] == sel_city]
-    m_opts = ["🔍 全台概覽 (預設)"] + sorted(df_m['MarketName'].unique())
-    
-    if st.session_state['nav_market'] not in m_opts:
-        st.session_state['nav_market'] = m_opts[0]
-    
-    def update_market():
-        st.session_state['nav_market'] = st.session_state['w_market']
-
-    sel_market = st.sidebar.selectbox(
-        "3️⃣ 夜市", 
-        m_opts, 
-        index=m_opts.index(st.session_state['nav_market']), 
-        key='w_market', 
-        on_change=update_market
-    )
-
-    # --- 圖層控制 ---
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("🗺️ 圖層控制")
-    
-    c1, c2 = st.sidebar.columns(2)
-    layer_keys = ['traffic_heat', 'night_market', 'weather', 'accidents'] # 定義要控制的 keys
-    
-    if c1.button("✅ 全選", use_container_width=True):
-        for k in layer_keys: st.session_state[f"show_{k}"] = True
-    if c2.button("⬜ 取消", use_container_width=True):
-        for k in layer_keys: st.session_state[f"show_{k}"] = False
-
     layers = {
         "traffic_heat": st.sidebar.checkbox("🔥 全台車禍熱區", key='show_traffic_heat'),
         "night_market": st.sidebar.checkbox("🏠 夜市位置", key='show_night_market'),
         "weather": st.sidebar.checkbox("🌧️ 降雨熱力", key='show_weather'),
-        "accidents": st.sidebar.checkbox("🔵 周邊事故詳情", key='show_accidents')
-    }
-    
-    is_overview = (sel_market == "🔍 全台概覽 (預設)")
-    target_market = None
-    if not is_overview and not df_m.empty:
-        target = df_m[df_m['MarketName'] == sel_market]
-        if not target.empty: target_market = target.iloc[0]
-            
-    return is_overview, target_market, layers
+        "accidents": st.sidebar.checkbox("🔵 周邊事故詳情", key='show_accidents')}
 
+    return True, None, layers
+
+
+
+@contextmanager
+def page_timer():
+    """
+    保留此函式以防止報錯
+    計算時間但不再 st.sidebar 中顯示內容
+    """
+    start_time = time.time()
+    yield # 執行頁面主內容
+    end_time = time.time()
+    # 計算結果僅保留，不進行 UI 輸出
+    _ = end_time - start_time
+    
 # ==========================================
 # 2. 地圖 (Map)
 # ==========================================
@@ -210,11 +135,4 @@ def render_opening_hours(target_market):
     with st.expander(f"🕒 {target_market['MarketName']} - 營業時間表", expanded=True):
         st.markdown(target_market.get('ScheduleHTML', "暫無詳細營業資訊"), unsafe_allow_html=True)
 
-@contextmanager
-def page_timer():
-    start_time = time.time()
-    yield # 讓出執行權，去執行各頁面的主程式碼
-    end_time = time.time()
-    load_time = end_time - start_time
-    st.sidebar.markdown("---")
-    st.sidebar.caption(f"⏱️ 效能監控：總耗時 {load_time:.3f} 秒")
+ 

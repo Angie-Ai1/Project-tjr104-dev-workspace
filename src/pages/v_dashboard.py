@@ -82,7 +82,7 @@ def main():
         c_map_title, c_slider = st.columns([1, 1], vertical_alignment="bottom")
         with c_map_title:
             st.subheader(f"🗺️ {target_market['MarketName']} 事故熱點")
-            radius_m = st.slider("📍 分析範圍 (m)", min_value=500, max_value=5000, step=500, value=1000)
+            radius_m = st.slider("📍 分析範圍 (m)", min_value=500, max_value=3000, step=500, value=1000)
             radius_km = radius_m / 1000.0
 
     # 載入數據
@@ -99,11 +99,12 @@ def main():
     with c_year:
         st.markdown("📅 **2. 分析年份**")
         available_years = sorted(df_raw['Year'].unique(), reverse=True)
-        default_years = [2024] if 2024 in available_years else available_years
+        default_years = available_years
+        # default_years = [2024] if 2024 in available_years else available_years
         
         # 初始化「全選」的狀態
         if "d_chk_all" not in st.session_state:
-            st.session_state["d_chk_all"] = False
+            st.session_state["d_chk_all"] = True
             
         # 初始化各年份狀態
         for year in available_years:
@@ -152,9 +153,11 @@ def main():
     # 繼續繪製下方地圖與圖表
     # =========================================================
     with col_main:
-        m = ui.build_map(False, target_market, layers, None, None, df_filtered, df_market)
+        # 對地圖進行 1000 筆隨機抽樣，保護瀏覽器效能
+        df_for_map = df_filtered.sample(n=min(1000, len(df_filtered)), random_state=42) if not df_filtered.empty else df_filtered
+        m = ui.build_map(False, target_market, layers, None, None, df_for_map, df_market)
         st_folium(m, height=500, use_container_width=True, returned_objects=[])
-        ui.render_opening_hours(target_market)
+
 
     # --- 中欄：天候風險 ---
     with col_weather:
@@ -170,7 +173,7 @@ def main():
             )
             st.altair_chart((pie + pie_text).properties(height=220), use_container_width=True)
             
-            st.markdown("##### ☠️ 死傷程度")
+            st.subheader("☠️ 死傷程度")  # st.markdown("##### ☠️ 死傷程度")
             weather_sev = df_filtered.groupby('weather_condition').agg(
                 死亡=('death_count', 'sum'), 受傷=('injury_count', 'sum')
             ).reset_index().rename(columns={'weather_condition': '天氣'})
@@ -204,7 +207,7 @@ def main():
             text_c = base_c.mark_text(align='left', dx=2).encode(text='件數:Q')
             st.altair_chart((bar_c + text_c).properties(height=250), use_container_width=True)
 
-        st.markdown("##### 🌙 24H 熱力")
+        st.subheader("🌙 24H 熱力")  # st.markdown("##### 🌙 24H 熱力)
         if 'Hour' in df_filtered.columns:
             df_hour = df_filtered.groupby('Hour').size().reset_index(name='件數')
             chart_hour = alt.Chart(df_hour).mark_area(
@@ -216,8 +219,8 @@ def main():
             ).properties(height=180)
             st.altair_chart(chart_hour, use_container_width=True)
 
-    with st.expander("📄 查看原始歷年統計表"):
-        st.dataframe(yearly_stats_full, use_container_width=True)
+                    # with st.expander("📄 查看原始歷年統計表"):
+                    #     st.dataframe(yearly_stats_full, use_container_width=True)
 
 if __name__ == "__main__":
     main()
