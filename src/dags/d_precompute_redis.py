@@ -148,7 +148,7 @@ with DAG(
                 # 2. 使用 itertools 將 6個半徑 x 5個年份 攤平成一維迴圈，提升效能
                 for r_m, y_target in itertools.product(radius_list, year_targets):
                     r_km = r_m / 1000.0
-                    cache_key = f"traffic:nearby_v12:{round(lat,4)}_{round(lon,4)}_{r_km}_{y_target}"
+                    cache_key = f"traffic:nearby_v12:{lat:.4f}_{lon:.4f}_{r_km:.1f}_{y_target}"
                     
                     if df_base.empty:
                         set_cache(cache_key, get_empty_result())

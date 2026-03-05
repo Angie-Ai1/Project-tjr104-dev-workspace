@@ -152,9 +152,17 @@ def main():
     # 繪製下方地圖與圖表
     # =========================================================
     with col_main:
-        # 1. 確保死亡事故優先保留，不隨機抽樣
+        # 1. 確保死亡事故優先保留，一般事故隨機抽樣以維持熱力圖真實分佈
+        
         if len(df_filtered) > 1000:
-            df_for_map = df_filtered.sort_values(by=['death_count', 'injury_count'], ascending=False).head(1000)
+            df_death_map = df_filtered[df_filtered['death_count'] > 0]
+            df_other_map = df_filtered[df_filtered['death_count'] == 0]
+            
+            # 隨機抽取 2000 筆來畫熱力圖，確保能觸發 c_ui.py 的 >800 門檻
+            if len(df_other_map) > 2000:
+                df_other_map = df_other_map.sample(n=2000, random_state=42)
+                
+            df_for_map = pd.concat([df_death_map, df_other_map])
         else:
             df_for_map = df_filtered
 

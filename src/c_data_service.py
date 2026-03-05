@@ -98,7 +98,7 @@ def get_taiwan_heatmap_data():
     """
 def get_nearby_accidents(lat, lon, radius_km=0.5, sample=True):
     # 1. 永遠去拿 3.0km 的最大快取包 (Master Bag)
-    cache_key = f"traffic:nearby_v12:{round(lat,4)}_{round(lon,4)}_3.0_all_sample"
+    cache_key = f"traffic:nearby_v12:{lat:.4f}_{lon:.4f}_3.0_all_sample"
     cached = get_cache(cache_key)
     
     if cached:
