@@ -92,30 +92,39 @@ def get_taiwan_heatmap_data():
             return result
     except: return []
 
-def get_nearby_accidents(lat, lon, radius_km=0.5, sample=True):
     """
     回傳: 地圖點位, 統計數據, 圖表數據, 年份詳細統計
     sample: 是否進行資料抽樣 (預設 True 用於地圖顯示, False 用於分析)
     """
-    sample_tag = "sample" if sample else "full"
-    cache_key = f"traffic:nearby_v10:{round(lat,4)}_{round(lon,4)}_{radius_km}_{sample_tag}"
+def get_nearby_accidents(lat, lon, radius_km=0.5, sample=True):
+    # 1. 永遠去拿 3.0km 的最大快取包 (Master Bag)
+    cache_key = f"traffic:nearby_v12:{round(lat,4)}_{round(lon,4)}_3.0_all_sample"
     cached = get_cache(cache_key)
-    if cached: return cached
-
+    
+    if cached:
+        # 2. 解開 3.0km 的完整資料
+        df_all, _, _, _ = cached 
+        
+        # 使用精準的「圓形」距離過濾 (貼合地圖上的橘色圈圈)
+        distances = haversine_distance(lat, lon, df_all['latitude'].values, df_all['longitude'].values)
+        df_filtered = df_all[distances <= radius_km]
+        
+        print(f"成功從 Redis 提取 3.0km 快取，並精準切出 {radius_km}km 圓形範圍")
+        return (df_filtered, {"total": len(df_filtered)}, {}, pd.DataFrame())
+    
+    # ==========================================
+    # 防止快取被污染的 DB 備援查詢
+    # ==========================================
+    print("Redis 無快取，啟用 DB 備援查詢 (強制獲取 3.0km 避免快取污染)")
     engine = get_db_engine()
-    offset = float(radius_km) / 111.0
+    
+    # 強制撈取 3.0km 的最大範圍，確保存進冰箱的是完整的 Master Bag
+    max_offset = 3.0 / 111.0
     sql = text("""
     SELECT 
-        a.accident_datetime,
-        a.latitude, 
-        a.longitude, 
-        a.death_count, 
-        a.injury_count, 
-        m.weather_condition,
-        a.primary_cause,
-        a.Year,
-        a.Hour,
-        a.Weekday_CN,
+        a.accident_datetime, a.latitude, a.longitude, a.death_count, 
+        a.injury_count, m.weather_condition, a.primary_cause,
+        a.Year, a.Hour, a.Weekday_CN,
         CASE 
             WHEN a.Hour >= 6 AND a.Hour < 12 THEN '早'
             WHEN a.Hour >= 12 AND a.Hour < 18 THEN '午'
@@ -126,58 +135,29 @@ def get_nearby_accidents(lat, lon, radius_km=0.5, sample=True):
         ON a.accident_id = m.accident_id
     WHERE a.latitude BETWEEN :min_lat AND :max_lat
       AND a.longitude BETWEEN :min_lon AND :max_lon
-""")
+    """)
     
+    params = {"min_lat": lat-max_offset, "max_lat": lat+max_offset, "min_lon": lon-max_offset, "max_lon": lon+max_offset}
     
-    params = {"min_lat": lat-offset, "max_lat": lat+offset, "min_lon": lon-offset, "max_lon": lon+offset}
-
-    df = pd.DataFrame()
     try:
         with engine.connect() as conn:
-            df = pd.read_sql(sql, conn, params=params)
+            df_all = pd.read_sql(sql, conn, params=params)
     except Exception as e:
         print(f"查詢失敗: {e}")
         return pd.DataFrame(), {"total":0}, {}, pd.DataFrame()
     
-    if df.empty: 
+    if df_all.empty: 
         return pd.DataFrame(), {"total":0}, {}, pd.DataFrame()
 
-    stats = {
-        "total": len(df),
-        "dead": int(df['death_count'].sum()),
-        "hurt": int(df['injury_count'].sum())}
+    # 把撈出來的 3.0km 完整資料包存進冰箱
+    result_to_cache = (df_all, {"total": len(df_all)}, {}, pd.DataFrame())
+    set_cache(cache_key, result_to_cache, ttl=3600)
     
-    top10 = df['primary_cause'].value_counts().head(10).reset_index()
-    top10.columns = ['肇因', '件數']
-    year_trend = df.groupby('Year').size().reset_index(name='件數')
-    week_stats = df.groupby('Weekday_CN').size().reindex(['週一','週二','週三','週四','週五','週六','週日'], fill_value=0).reset_index(name='件數')
-    hour_stats = df.groupby('Hour').size().reset_index(name='件數')
+    # 最後再針對這次網頁滑桿請求的 radius_km 進行過濾並回傳
+    distances = haversine_distance(lat, lon, df_all['latitude'].values, df_all['longitude'].values)
+    df_filtered = df_all[distances <= radius_km]
     
-    if 'weather_condition' in df.columns:
-        weather_stats = df['weather_condition'].value_counts().reset_index()
-        weather_stats.columns = ['天氣', '件數']
-    else:
-        weather_stats = pd.DataFrame(columns=['天氣', '件數'])
-
-    charts = {'top10': top10, 'year': year_trend, 'week': week_stats, 'hour': hour_stats, 'weather': weather_stats}
-
-    yearly_grp = df.groupby('Year').agg({'death_count': 'sum', 'injury_count': 'sum', 'accident_datetime': 'count'}).rename(columns={'accident_datetime': 'Total', 'death_count':'Dead', 'injury_count':'Hurt'})
-    period_grp = pd.crosstab(df['Year'], df['Period'])
-    for p in ['早', '午', '晚']:
-        if p not in period_grp.columns: period_grp[p] = 0
-    yearly_stats = pd.concat([yearly_grp, period_grp], axis=1).sort_index(ascending=False).reset_index()
-
-    if sample:
-        # 將上限調高到 1000 點，確保畫面豐富度，同時保護前端效能
-        if len(df) > 1000:
-            map_df = df.sort_values(by=['death_count', 'injury_count'], ascending=False).head(1000)
-        else:
-            map_df = df
-    else:
-        map_df = df
-    result = (map_df, stats, charts, yearly_stats)
-    set_cache(cache_key, result, ttl=3600)
-    return result
+    return (df_filtered, {"total": len(df_filtered)}, {}, pd.DataFrame())
 
 def get_pedestrian_stats_by_region_monthly():
     cache_key = "analysis:pedestrian_region_month" 

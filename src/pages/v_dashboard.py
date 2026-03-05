@@ -18,7 +18,6 @@ def main():
         df_market = ds.get_all_nightmarkets()
         
     st.session_state['show_accidents'] = True
-    st.session_state['show_night_market'] = True
     
     # 呼叫側邊欄以保留導航與圖層控制
     _, _, layers = ui.render_sidebar(df_market)
