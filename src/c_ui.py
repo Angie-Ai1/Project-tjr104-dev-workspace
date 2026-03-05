@@ -20,6 +20,8 @@ def render_sidebar(df_market):
     st.sidebar.page_link("pages/v_hist_trend.py", label="歷年事故趨勢分析", icon="📈")
     st.sidebar.page_link("pages/v_policy_impact.py", label="交通政策影響分析", icon="⚖️")
     st.sidebar.markdown("---")
+    st.sidebar.page_link("pages/v_tableau.py", label="Tableau車禍數據看板", icon="🖼️") 
+    st.sidebar.markdown("---")
 
     st.sidebar.header("🔍 篩選導航")
 
