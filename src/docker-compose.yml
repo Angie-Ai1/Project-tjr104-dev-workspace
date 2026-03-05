@@ -16,8 +16,11 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-api-server:8080/execution
     
     CLOUDSQL_URL: "mysql+pymysql://root:123456@host.docker.internal:3307/test_db"
-    REDIS_HOST: "host.docker.internal"
-    REDIS_PORT: "6380"
+    # REDIS_HOST: "host.docker.internal"
+    # REDIS_PORT: "6380"
+    REDIS_HOST: ${REDIS_HOST}
+    REDIS_PORT: ${REDIS_PORT}
+    REDIS_PASSWORD: ${REDIS_PASSWORD}
     
   volumes:
     - ./dags:/opt/airflow/dags
