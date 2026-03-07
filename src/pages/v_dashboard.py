@@ -7,6 +7,19 @@ import os
 import c_data_service as ds
 import c_ui as ui
 
+# AI頁面分析
+from dotenv import load_dotenv
+from groq import Groq
+
+# 1. 優先讀取根目錄的 .env
+load_dotenv() 
+# 2. 強制指定上一層目錄的路徑再讀一次 (確保 pages/ 內也能讀到)
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dotenv_path = os.path.join(current_dir, '..', '.env')
+load_dotenv(dotenv_path=parent_dotenv_path, override=True)
+# 測試用：請看您的終端機(Terminal)是否有印出這行
+if not os.getenv("GROQ_API_KEY"):
+    st.error("❌找不到 GROQ_API_KEY，請檢查 .env 檔案是否在正確位置。")
 # 路徑設定
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 st.set_page_config(layout="wide", page_title="夜市區域事故分析", page_icon="📊")
@@ -71,8 +84,14 @@ def main():
         return
 
     # --- 單一夜市模式 ---
+    if "last_market" not in st.session_state:
+        st.session_state.last_market = sel_market
+    if st.session_state.last_market != sel_market:
+        st.session_state.ai_report_text = ""
+        st.session_state.last_market = sel_market
     st.markdown("---")
-    
+    container_ai = st.container()
+
     # 建立下方三欄式佈局 (地圖2 : 天氣1 : 肇因1)
     col_main, col_weather, col_cause = st.columns([2, 1, 1], gap="medium")
     
@@ -149,18 +168,55 @@ def main():
         k4.metric("🌧️ 雨天比例", f"{rain_ratio:.1f}%")
 
     # =========================================================
+    # 💡 AI 分析報告區
+    # =========================================================
+    st.markdown("---")
+    with container_ai:
+         # 1. 找出主要肇因與尖峰時段
+        top_cause_str = df_filtered['primary_cause'].value_counts().idxmax() if ('primary_cause' in df_filtered.columns and not df_filtered.empty) else "未知"
+        peak_hour_str = df_filtered.groupby('Hour').size().idxmax() if ('Hour' in df_filtered.columns and not df_filtered.empty) else "未知"
+        
+        # 2. 找出最明顯危險路口/死亡事故點
+        df_death = df_filtered[df_filtered['death_count'] > 0]
+        if not df_death.empty:
+            risky_point = df_death.groupby(['latitude', 'longitude']).size().idxmax()
+            risky_loc = f"座標 {risky_point} (曾發生死亡事故)"
+        elif not df_filtered.empty:
+            risky_point = df_filtered.groupby(['latitude', 'longitude']).size().idxmax()
+            risky_loc = f"座標 {risky_point} (高頻事故熱點)"
+        else:
+            risky_loc = "無明顯熱點"
+        # 3. UI 渲染 (使用 st.container 確保橫跨滿版)
+        if "ai_report_text" not in st.session_state:
+            st.session_state.ai_report_text = ""
+        with st.container():
+            c_ai_t, c_ai_b = st.columns([3, 1], vertical_alignment="center")
+            with c_ai_t:
+                st.subheader("💡 生成式 AI 深度分析報告")
+            with c_ai_b:
+                if st.button("✨ 產生專屬分析報告", type="primary", use_container_width=True):
+                    with st.spinner("AI 正在解析肇因、路段與預防要點..."):
+                        st.session_state.ai_report_text = get_ai_analysis(
+                            target_market['MarketName'], stats_new['total'], stats_new['dead'], 
+                            stats_new['hurt'], round(rain_ratio, 1), top_cause_str, peak_hour_str, risky_loc
+                        )
+            if st.session_state.ai_report_text:
+                st.info(st.session_state.ai_report_text)
+            else:
+                st.caption("💡 範圍與年份設定完成後，點擊按鈕針對「肇因預防、尖峰路段、死亡路口」生成深度分析。")
+        st.markdown("---")
+    # =========================================================
     # 繪製下方地圖與圖表
     # =========================================================
     with col_main:
         # 1. 確保死亡事故優先保留，一般事故隨機抽樣以維持熱力圖真實分佈
-        
         if len(df_filtered) > 1000:
             df_death_map = df_filtered[df_filtered['death_count'] > 0]
             df_other_map = df_filtered[df_filtered['death_count'] == 0]
             
-            # 隨機抽取 2000 筆來畫熱力圖，確保能觸發 c_ui.py 的 >800 門檻
-            if len(df_other_map) > 2000:
-                df_other_map = df_other_map.sample(n=2000, random_state=42)
+            # 隨機抽取 1500 筆來畫熱力圖，確保能觸發 c_ui.py 的 >800 門檻
+            if len(df_other_map) > 1500:
+                df_other_map = df_other_map.sample(n=1500, random_state=42)
                 
             df_for_map = pd.concat([df_death_map, df_other_map])
         else:
@@ -245,6 +301,28 @@ def main():
 
                     # with st.expander("📄 查看原始歷年統計表"):
                     #     st.dataframe(yearly_stats_full, use_container_width=True)
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def get_ai_analysis(market_name, total, dead, hurt, rain_ratio, top_cause, peak_hour, risky_loc):
+    try:
+        client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+        prompt = f"""
+        你是一個專業的台灣交通安全分析師。請針對「{market_name}」周邊數據，以繁體中文回答以下五大要點（字數約250字）：
+        1. 主要肇因與預防：分析為何「{top_cause}」頻繁發生，並給予具體的預防與改善建議。
+        2. 事故尖峰時段：針對「{peak_hour}點」的環境危險因素（如視線、車流）提出警告。
+        3. 主要發生路段：根據夜市地理與人流行為特徵，推測哪些路段/動線風險最高。
+        4. 天氣主因判斷：雨天事故佔 {rain_ratio}%，請判斷天氣是否為關鍵變因。
+        5. 最明顯危險路口：針對熱點「{risky_loc}」給予用路人強烈警語。
+        
+        數據規模參考：總事故{total}件、死亡{dead}、受傷{hurt}。請用條列式說明，語氣客觀專業，直接命中痛點。
+        """
+        chat_completion = client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="llama-3.3-70b-versatile",
+        )
+        return chat_completion.choices[0].message.content
+    except Exception as e:
+        return f"⚠️ AI 分析暫時無法使用，錯誤細節：{str(e)}"
 
 if __name__ == "__main__":
     main()
