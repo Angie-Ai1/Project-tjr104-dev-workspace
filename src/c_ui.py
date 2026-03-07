@@ -5,32 +5,48 @@ import pandas as pd
 import altair as alt 
 import time
 from contextlib import contextmanager
-
+# 外國觀光客友善（多國語系翻譯）
+import time
+import streamlit.components.v1 as components
 # ==========================================
 # 1. 側邊欄 (Sidebar)
 # ==========================================
 def render_sidebar(df_market):
-    """
-    繪製側邊欄，改為 區域(北中南) -> 縣市 -> 夜市 的篩選邏輯
-    並設定預設值為「士林夜市」
-    """
-    st.sidebar.markdown("### 導航選單")
+    st.sidebar.markdown("#### 🌐 語言切換 / Language")
+    render_google_translator()
+    # 導航選單
+    st.sidebar.markdown("## 導航選單")
     st.sidebar.page_link("r_app.py", label="首頁", icon="🏠")
     st.sidebar.page_link("pages/v_dashboard.py", label="夜市區域事故分析", icon="📊")
     st.sidebar.page_link("pages/v_hist_trend.py", label="歷年事故趨勢分析", icon="📈")
     st.sidebar.page_link("pages/v_policy_impact.py", label="交通政策影響分析", icon="⚖️")
-    st.sidebar.markdown("---")
     st.sidebar.page_link("pages/v_tableau.py", label="Tableau車禍數據看板", icon="🖼️") 
     st.sidebar.markdown("---")
+    # 加入組員頁面
+    st.sidebar.markdown("## 夜市行人地獄專題")
+    st.sidebar.page_link("pages/v_act1_home.py", label="夜市行人地獄(?)", icon="🔥")
+    st.sidebar.page_link("pages/v_act2_overview.py", label="夜市老實說", icon="📝")
+    st.sidebar.page_link("pages/v_act3_avoid.py", label="行人看這裡", icon="🚶")
+    st.sidebar.page_link("pages/v_act4_gov.py", label="政府幫幫忙", icon="🏛️")
+    # st.sidebar.page_link("pages/v_act5_policy.py", label="政策來檢驗", icon="✅")
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("## 持續開發中")
+    st.sidebar.page_link("pages/v_act6_chat.py", label="AI 小幫手", icon="💬")
+    st.sidebar.markdown("---")
 
-    st.sidebar.header("🔍 篩選導航")
+    # st.sidebar.header("🔍 篩選導航")
+    # layers = {
+    #     "traffic_heat": st.sidebar.checkbox("🔥 全台車禍熱區", value=True, key='show_traffic_heat'),
+    #     "night_market": st.sidebar.checkbox("🏠 夜市位置", value=True, key='show_night_market'),
+    #     "weather": st.sidebar.checkbox("🌧️ 降雨熱力", key='show_weather'),
+    #     "accidents": st.sidebar.checkbox("🔵 周邊事故詳情", key='show_accidents')}
 
     layers = {
-        "traffic_heat": st.sidebar.checkbox("🔥 全台車禍熱區", value=True, key='show_traffic_heat'),
-        "night_market": st.sidebar.checkbox("🏠 夜市位置", value=True, key='show_night_market'),
-        "weather": st.sidebar.checkbox("🌧️ 降雨熱力", key='show_weather'),
-        "accidents": st.sidebar.checkbox("🔵 周邊事故詳情", key='show_accidents')}
-
+        "traffic_heat": True,
+        "night_market": True,
+        "weather": False,
+        "accidents": True}
+    
     return True, None, layers
 
 
@@ -139,4 +155,47 @@ def render_opening_hours(target_market):
     with st.expander(f"🕒 {target_market['MarketName']} - 營業時間表", expanded=True):
         st.markdown(target_market.get('ScheduleHTML', "暫無詳細營業資訊"), unsafe_allow_html=True)
 
- 
+# ==========================================
+# 4. 外國觀光客友善（多國語系翻譯）
+# ==========================================
+def render_google_translator():
+    st.sidebar.markdown('<div id="google_translate_container"></div>', unsafe_allow_html=True)
+    st.sidebar.markdown("---")
+    components.html(
+        """
+        <script>
+        const parentWindow = window.parent;
+        const parentDoc = parentWindow.document;
+
+        // 判斷是否已經有我們建立的持久化容器
+        if (!parentWindow.persistent_google_translate) {
+            // 1. 建立一個獨立的持久化 div 用來存放翻譯套件
+            parentWindow.persistent_google_translate = parentDoc.createElement('div');
+            parentWindow.persistent_google_translate.id = 'persistent_google_translate';
+            
+            // 2. 定義初始化函式，並綁定到持久化容器
+            parentWindow.googleTranslateElementInit = function() {
+                new parentWindow.google.translate.TranslateElement({
+                    pageLanguage: 'zh-TW',
+                    includedLanguages: 'zh-TW,en,ja,ko',
+                    layout: parentWindow.google.translate.TranslateElement.InlineLayout.SIMPLE
+                }, 'persistent_google_translate'); 
+            };
+            
+            // 3. 載入 Google 翻譯腳本
+            const script = parentDoc.createElement('script');
+            script.id = 'google-translate-script';
+            script.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+            parentDoc.body.appendChild(script);
+        }
+
+        // 每次 Streamlit 換頁重新渲染 sidebar 時，將已經存在的翻譯套件搬移到目前的 sidebar 容器中
+        setTimeout(() => {
+            const container = parentDoc.getElementById('google_translate_container');
+            if (container && parentWindow.persistent_google_translate) {
+                container.appendChild(parentWindow.persistent_google_translate);
+            }
+        }, 300);
+        </script>
+        """,
+        height=0, width=0)
