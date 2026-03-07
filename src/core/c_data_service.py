@@ -1,8 +1,10 @@
 import pandas as pd
 import numpy as np
 from sqlalchemy import text
-from c_db import get_db_engine
-from r_cache import get_cache, set_cache
+from .c_db import get_db_engine
+from .r_cache import get_cache, set_cache, REDIS_POOL
+import threading
+import streamlit as st
 
 # =========================================================
 #  1. 夜市資料
@@ -82,7 +84,7 @@ def get_taiwan_heatmap_data():
     cached = get_cache(cache_key)
     if cached: return cached
     engine = get_db_engine()
-    sql = "SELECT lat, lon, count FROM `test_accident`.`tbl_accident_heatmap` WHERE count >= 3"
+    sql = "SELECT lat, lon, count FROM frontend_db.tbl_accident_heatmap WHERE count >= 3"
     try:
         with engine.connect() as conn:
             df = pd.read_sql(sql, conn)
@@ -96,66 +98,85 @@ def get_taiwan_heatmap_data():
     回傳: 地圖點位, 統計數據, 圖表數據, 年份詳細統計
     sample: 是否進行資料抽樣 (預設 True 用於地圖顯示, False 用於分析)
     """
+
+@st.cache_data(ttl=3600, show_spinner=False) 
 def get_nearby_accidents(lat, lon, radius_km=0.5, sample=True):
-    # 1. 永遠去拿 3.0km 的最大快取包 (Master Bag)
-    cache_key = f"traffic:nearby_v12:{lat:.4f}_{lon:.4f}_3.0_all_sample"
-    cached = get_cache(cache_key)
+    # ==========================================
+    # 🎯 階段 1：嚴格金鑰比對 (Streamlit 最新標準寫法)
+    # ==========================================
+    strict_key = f"traffic:nearby_v12:{lat:.4f}_{lon:.4f}_3.0_all_sample"
+    cached = get_cache(strict_key)
     
-    if cached:
-        # 2. 解開 3.0km 的完整資料
-        df_all, _, _, _ = cached 
+    # ==========================================
+    # 🔍 階段 2：極速雙金鑰攔截 (相容 Airflow 的舊寫法)
+    # ==========================================
+    if not cached:
+        # 模擬 Airflow d_precompute_redis.py 的寫法
+        airflow_key = f"traffic:nearby_v12:{round(lat,4)}_{round(lon,4)}_3.0_all_sample"
         
-        # 使用精準的「圓形」距離過濾 (貼合地圖上的橘色圈圈)
+        # 只有當兩種寫法真的產生不同字串時 (例如 25.1000 vs 25.1)，才去問第二次
+        if strict_key != airflow_key:
+            print(f"⚠️ 嚴格比對未命中，嘗試讀取 Airflow 相容金鑰: {airflow_key} ...")
+            cached = get_cache(airflow_key)
+
+    # ==========================================
+    # 🟢 成功攔截快取後的處理
+    # ==========================================
+    if cached:
+        df_all, _, _, _ = cached 
         distances = haversine_distance(lat, lon, df_all['latitude'].values, df_all['longitude'].values)
         df_filtered = df_all[distances <= radius_km]
-        
-        print(f"成功從 Redis 提取 3.0km 快取，並精準切出 {radius_km}km 圓形範圍")
+        print(f"✅ 快取讀取成功！精準提取 {radius_km}km 範圍")
         return (df_filtered, {"total": len(df_filtered)}, {}, pd.DataFrame())
-    
+
     # ==========================================
-    # 防止快取被污染的 DB 備援查詢
+    # 🚨 階段 3：徹底無快取，去 MySQL 撈取 final 表 (附帶背景預熱)
     # ==========================================
-    print("Redis 無快取，啟用 DB 備援查詢 (強制獲取 3.0km 避免快取污染)")
+    print(f"❌ 徹底無快取，啟動極速 DB 查詢 {radius_km}km 範圍...")
     engine = get_db_engine()
     
-    # 強制撈取 3.0km 的最大範圍，確保存進冰箱的是完整的 Master Bag
-    max_offset = 3.0 / 111.0
     sql = text("""
-    SELECT 
-        a.accident_datetime, a.latitude, a.longitude, a.death_count, 
-        a.injury_count, m.weather_condition, a.primary_cause,
-        a.Year, a.Hour, a.Weekday_CN,
-        CASE 
-            WHEN a.Hour >= 6 AND a.Hour < 12 THEN '早'
-            WHEN a.Hour >= 12 AND a.Hour < 18 THEN '午'
-            ELSE '晚'
-        END AS Period
-    FROM `test_accident`.`tbl_accident_analysis` a
-    LEFT JOIN `test_accident`.`accident_sq1_main` m 
-        ON a.accident_id = m.accident_id
-    WHERE a.latitude BETWEEN :min_lat AND :max_lat
-      AND a.longitude BETWEEN :min_lon AND :max_lon
+        SELECT accident_datetime, latitude, longitude, death_count, 
+               injury_count, weather_condition, primary_cause,
+               Year, Hour, Weekday_CN,
+               CASE 
+                   WHEN Hour >= 6 AND Hour < 12 THEN '早'
+                   WHEN Hour >= 12 AND Hour < 18 THEN '午'
+                   ELSE '晚'
+               END AS Period
+        FROM frontend_db.`tbl_accident_analysis_final`
+        WHERE latitude BETWEEN :min_lat AND :max_lat 
+          AND longitude BETWEEN :min_lon AND :max_lon
     """)
-    
-    params = {"min_lat": lat-max_offset, "max_lat": lat+max_offset, "min_lon": lon-max_offset, "max_lon": lon+max_offset}
+
+    max_offset_fast = radius_km / 111.0
+    params_fast = {"min_lat": lat-max_offset_fast, "max_lat": lat+max_offset_fast, "min_lon": lon-max_offset_fast, "max_lon": lon+max_offset_fast}
     
     try:
         with engine.connect() as conn:
-            df_all = pd.read_sql(sql, conn, params=params)
+            df_fast = pd.read_sql(sql, conn, params=params_fast)
     except Exception as e:
-        print(f"查詢失敗: {e}")
-        return pd.DataFrame(), {"total":0}, {}, pd.DataFrame()
-    
-    if df_all.empty: 
         return pd.DataFrame(), {"total":0}, {}, pd.DataFrame()
 
-    # 把撈出來的 3.0km 完整資料包存進冰箱
-    result_to_cache = (df_all, {"total": len(df_all)}, {}, pd.DataFrame())
-    set_cache(cache_key, result_to_cache, ttl=3600)
-    
-    # 最後再針對這次網頁滑桿請求的 radius_km 進行過濾並回傳
-    distances = haversine_distance(lat, lon, df_all['latitude'].values, df_all['longitude'].values)
-    df_filtered = df_all[distances <= radius_km]
+    def background_warmup():
+        print(f"背景任務啟動：正在為此夜市撈取 3.0km Master Bag...")
+        try:
+            max_offset_bg = 3.0 / 111.0
+            params_bg = {"min_lat": lat-max_offset_bg, "max_lat": lat+max_offset_bg, "min_lon": lon-max_offset_bg, "max_lon": lon+max_offset_bg}
+            with engine.connect() as conn_bg:
+                df_bg = pd.read_sql(sql, conn_bg, params=params_bg)
+            if not df_bg.empty:
+                set_cache(strict_key, (df_bg, {"total": len(df_bg)}, {}, pd.DataFrame()), ttl=172800)
+                print("背景任務完成！")
+        except Exception as e:
+            pass
+
+    bg_thread = threading.Thread(target=background_warmup)
+    bg_thread.start()
+
+    if df_fast.empty: return pd.DataFrame(), {"total":0}, {}, pd.DataFrame()
+    distances = haversine_distance(lat, lon, df_fast['latitude'].values, df_fast['longitude'].values)
+    df_filtered = df_fast[distances <= radius_km]
     
     return (df_filtered, {"total": len(df_filtered)}, {}, pd.DataFrame())
 
@@ -175,7 +196,7 @@ def get_pedestrian_stats_by_region_monthly():
             ELSE '南部'
         END as Region,
         COUNT(DISTINCT accident_id) as Count
-    FROM `test_accident`.`tbl_pedestrian_accident`
+    FROM `frontend_db`.`tbl_pedestrian_accident`
     GROUP BY YearMonth, Region
     ORDER BY YearMonth, Region
     """
@@ -212,7 +233,7 @@ def get_pedestrian_trend(lat=None, lon=None, radius_km=0.5):
     SELECT 
         DATE_FORMAT(accident_datetime, '%Y-%m') as YearMonth,
         COUNT(DISTINCT accident_id) as Count
-    FROM `test_accident`.`tbl_pedestrian_accident`
+    FROM `frontend_db`.`tbl_pedestrian_accident`
     {where_clause}
     GROUP BY YearMonth
     ORDER BY YearMonth
@@ -240,16 +261,14 @@ def get_accident_weather_analysis(lat, lon, radius_km=0.5):
     
     sql = text("""
         SELECT 
-            m.weather_condition as 天氣, 
+            weather_condition as 天氣, 
             COUNT(*) as 件數,
-            SUM(a.death_count) as 死亡,
-            SUM(a.injury_count) as 受傷
-        FROM `test_accident`.`tbl_accident_analysis` a
-        LEFT JOIN `test_accident`.`accident_sq1_main` m 
-            ON a.accident_id = m.accident_id
-        WHERE a.latitude BETWEEN :min_lat AND :max_lat 
-          AND a.longitude BETWEEN :min_lon AND :max_lon
-        GROUP BY m.weather_condition
+            SUM(death_count) as 死亡,
+            SUM(injury_count) as 受傷
+        FROM `frontend_db`.`tbl_accident_analysis_final`
+        WHERE latitude BETWEEN :min_lat AND :max_lat 
+          AND longitude BETWEEN :min_lon AND :max_lon
+        GROUP BY weather_condition
         ORDER BY 件數 DESC
     """)
     params = {"min_lat": lat-offset, "max_lat": lat+offset, "min_lon": lon-offset, "max_lon": lon+offset}

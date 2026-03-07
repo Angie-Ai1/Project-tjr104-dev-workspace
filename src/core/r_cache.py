@@ -7,20 +7,17 @@ load_dotenv()
 
 # 初始化 Redis
 # 1. 決定 host 地址
-host = os.getenv("REDIS_HOST")
-if not host:
-    if os.getenv("AIRFLOW_HOME"):
-        host = "redis"      # 如果是 Airflow (在 Docker 內)，固定找 redis 容器
-    else:
-        host = "127.0.0.1"  # 如果是 Streamlit (在本機端)，固定找 127.0.0.1 (比 localhost 更穩)
+if os.getenv("AIRFLOW_HOME"):
+    host = "redis"      # 如果是 Airflow (在 Docker 內)，固定找 redis 容器
+else:
+    host = "127.0.0.1"  # 如果是 Streamlit (在本機端)，固定找 127.0.0.1 (比 localhost 更穩)
 
 # 2. 將變數代入初始化
 REDIS_POOL = redis.ConnectionPool(
     host=host,
-    port=int(os.getenv("REDIS_PORT", 6379)),
-    password=os.getenv("REDIS_PASSWORD", "123456"),
-    decode_responses=False
-)
+    port=int(os.getenv("REDIS_PORT")),
+    password=os.getenv("REDIS_PASSWORD"),
+    decode_responses=False)
 
 """從 Redis 取得資料"""
 def get_cache(key):

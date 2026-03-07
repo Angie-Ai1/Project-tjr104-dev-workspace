@@ -15,7 +15,7 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__INTERNAL_API_URL: http://airflow-api-server:8080/execution
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-api-server:8080/execution
     
-    CLOUDSQL_URL: "mysql+pymysql://root:123456@host.docker.internal:3307/test_db"
+    CLOUDSQL_URL: "mysql+pymysql://root:123456@host.docker.internal:3308/test_db"
     # REDIS_HOST: "host.docker.internal"
     # REDIS_PORT: "6380"
     REDIS_HOST: ${REDIS_HOST}
@@ -44,7 +44,7 @@ services:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
-      - "3308:3306"
+      - "3309:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:

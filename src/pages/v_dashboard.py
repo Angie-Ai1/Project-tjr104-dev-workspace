@@ -4,8 +4,8 @@ import pandas as pd
 import altair as alt
 import sys
 import os
-import c_data_service as ds
-import c_ui as ui
+import core.c_data_service as ds
+import core.c_ui as ui
 
 # AI頁面分析
 from dotenv import load_dotenv

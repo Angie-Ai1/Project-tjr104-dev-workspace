@@ -18,7 +18,7 @@ with DAG(
     tags=['accident_data', 'tables_only'],
 ) as dag:
 
-    #### 1. 建立影子臨時表結構
+    #### 1. 建立臨時表結構
     create_temp_skeletons = SQLExecuteQueryOperator(
         task_id='create_temp_skeletons',
         conn_id='mysql_db',
@@ -94,7 +94,7 @@ with DAG(
         """
     )
 
-    #### 4. 瞬間更名切換 (Atomic Swap)
+    #### 4. 瞬間更名切換
     atomic_swap = SQLExecuteQueryOperator(
         task_id='atomic_swap',
         conn_id='mysql_db',

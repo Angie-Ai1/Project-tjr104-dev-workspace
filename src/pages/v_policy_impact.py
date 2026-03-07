@@ -3,8 +3,8 @@ import sys
 import os
 import pandas as pd
 import altair as alt
-import c_data_service as ds
-import c_ui as ui
+import core.c_data_service as ds
+import core.c_ui as ui
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 

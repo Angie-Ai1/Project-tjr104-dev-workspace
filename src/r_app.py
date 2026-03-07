@@ -1,7 +1,7 @@
 import streamlit as st
 from streamlit_folium import st_folium
-import c_data_service as ds
-import c_ui as ui
+import core.c_data_service as ds
+import core.c_ui as ui
 import time
 
 # 1. 頁面設定

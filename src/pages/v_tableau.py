@@ -1,7 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import c_data_service as ds
-import c_ui as ui
+import core.c_data_service as ds
+import core.c_ui as ui
 
 st.set_page_config(layout="wide", page_title="Tableau車禍數據看板", page_icon="🖼️")
 

@@ -1,6 +1,5 @@
 from airflow import DAG
-from airflow.decorators import task
-from datetime import datetime
+from airflow.sdk import task
 import os
 import pandas as pd
 from sqlalchemy import create_engine
