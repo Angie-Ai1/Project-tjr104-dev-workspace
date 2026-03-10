@@ -8,6 +8,7 @@ from contextlib import contextmanager
 # 外國觀光客友善（多國語系翻譯）
 import time
 import streamlit.components.v1 as components
+import uuid
 # ==========================================
 # 1. 側邊欄 (Sidebar)
 # ==========================================
@@ -15,24 +16,34 @@ def render_sidebar(df_market):
     st.sidebar.markdown("#### 🌐 語言切換 / Language")
     render_google_translator()
     # 導航選單
-    st.sidebar.markdown("## 導航選單")
-    st.sidebar.page_link("r_app.py", label="首頁", icon="🏠")
-    st.sidebar.page_link("pages/v_dashboard.py", label="夜市區域事故分析", icon="📊")
-    st.sidebar.page_link("pages/v_hist_trend.py", label="歷年事故趨勢分析", icon="📈")
-    st.sidebar.page_link("pages/v_policy_impact.py", label="交通政策影響分析", icon="⚖️")
-    st.sidebar.page_link("pages/v_tableau.py", label="Tableau車禍數據看板", icon="🖼️") 
+    st.sidebar.markdown("# 夜市行人地獄(?)")
     st.sidebar.markdown("---")
-    # 加入組員頁面
-    st.sidebar.markdown("## 夜市行人地獄專題")
-    st.sidebar.page_link("pages/v_act1_home.py", label="夜市行人地獄(?)", icon="🔥")
-    st.sidebar.page_link("pages/v_act2_overview.py", label="夜市老實說", icon="📝")
-    st.sidebar.page_link("pages/v_act3_avoid.py", label="行人看這裡", icon="🚶")
-    st.sidebar.page_link("pages/v_act4_gov.py", label="政府幫幫忙", icon="🏛️")
-    # st.sidebar.page_link("pages/v_act5_policy.py", label="政策來檢驗", icon="✅")
+    st.sidebar.markdown("## 夜市老實說: 一窺事故熱點")
+    st.sidebar.page_link("r_app.py", label="專題背景", icon="🏠")
+    st.sidebar.page_link("pages/v_act1_all_accident.py", label="全台夜市事故嚴重分析", icon="🔥")
+    st.sidebar.page_link("pages/v_hist_trend.py", label="各縣市夜市事故比較分析", icon="📈")
+    st.sidebar.page_link("pages/v_act1_single_accident.py", label="單一夜市事故AI分析", icon="📊")
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("## 行人看這裡: 友善導航")
+    # 這裡要放什麼我要想一下 (可能推薦逛夜市的入口)
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("## 政府幫幫忙: 政策推行")
+    st.sidebar.page_link("pages/v_policy_impact.py", label="禮讓行人政策即時監控", icon="⚖️")
+    st.sidebar.page_link("pages/v_tableau.py", label="歷史車禍數據看板 (Tableau)", icon="🖼️") 
+
     st.sidebar.markdown("---")
     st.sidebar.markdown("## 持續開發中")
     st.sidebar.page_link("pages/v_act6_chat.py", label="AI 小幫手", icon="💬")
+    st.sidebar.markdown("---")  
+
+    
+    # 加入組員頁面
     st.sidebar.markdown("---")
+    st.sidebar.markdown("## 夜市行人地獄專題")
+    st.sidebar.page_link("pages/v_act2_overview.py", label="夜市老實說", icon="📝")
+    st.sidebar.page_link("pages/v_act3_avoid.py", label="行人看這裡", icon="🚶")
+    st.sidebar.page_link("pages/v_act4_gov.py", label="政府幫幫忙", icon="🏛️")
+
 
     # st.sidebar.header("🔍 篩選導航")
     # layers = {
@@ -49,8 +60,6 @@ def render_sidebar(df_market):
     
     return True, None, layers
 
-
-
 @contextmanager
 def page_timer():
     """
@@ -64,19 +73,19 @@ def page_timer():
     _ = end_time - start_time
     
 # ==========================================
-# 2. 地圖 (Map)
+# 2. 地圖 (Map) 
 # ==========================================
-def build_map(is_overview, target_market, layers, dynamic_zoom, radius_m, traffic_global, df_local, df_market):
+def build_map(is_overview, target_market, layers, dynamic_zoom, radius_m, traffic_global, df_local, df_market, custom_tiles="CartoDB positron"):
     if is_overview: 
         loc, zoom = [23.7, 120.95], 8
     elif target_market is not None: 
         loc = [target_market['lat'], target_market['lon']]
-        # 接收 v_dashboard 傳來的動態縮放值，若無則預設 16
+        # 接收 v_act1_single_accident 傳來的動態縮放值，若無則預設 16
         zoom = dynamic_zoom if dynamic_zoom is not None else 16
     else: 
         loc, zoom = [25.03, 121.56], 12
-
-    m = folium.Map(location=loc, zoom_start=zoom, tiles="CartoDB positron", prefer_canvas=True)
+    # 將 tiles 改為使用傳入的 custom_tiles 變數
+    m = folium.Map(location=loc, zoom_start=zoom, tiles=custom_tiles, prefer_canvas=True)
 
     if layers.get('traffic_heat') and traffic_global:
         HeatMap(traffic_global, radius=15, blur=12, min_opacity=0.3).add_to(m)
@@ -149,53 +158,47 @@ def build_map(is_overview, target_market, layers, dynamic_zoom, radius_m, traffi
     return m # 將畫好的地圖交還給主程式
 
 # ==========================================
-# 3. 圖表 (Charts) - 這裡保留函式但 v_dashboard 會直接畫
-# ==========================================
-def render_opening_hours(target_market):
-    with st.expander(f"🕒 {target_market['MarketName']} - 營業時間表", expanded=True):
-        st.markdown(target_market.get('ScheduleHTML', "暫無詳細營業資訊"), unsafe_allow_html=True)
-
-# ==========================================
-# 4. 外國觀光客友善（多國語系翻譯）
+# 3. 外國觀光客友善（多國語系翻譯）
 # ==========================================
 def render_google_translator():
-    st.sidebar.markdown('<div id="google_translate_container"></div>', unsafe_allow_html=True)
+    container_id = f"google_translate_{uuid.uuid4().hex}"
+    st.sidebar.markdown(f'<div id="{container_id}"></div>', unsafe_allow_html=True)
     st.sidebar.markdown("---")
+    
     components.html(
-        """
+        f"""
         <script>
         const parentWindow = window.parent;
         const parentDoc = parentWindow.document;
 
-        // 判斷是否已經有我們建立的持久化容器
-        if (!parentWindow.persistent_google_translate) {
-            // 1. 建立一個獨立的持久化 div 用來存放翻譯套件
+        if (!parentWindow.persistent_google_translate) {{
             parentWindow.persistent_google_translate = parentDoc.createElement('div');
             parentWindow.persistent_google_translate.id = 'persistent_google_translate';
             
-            // 2. 定義初始化函式，並綁定到持久化容器
-            parentWindow.googleTranslateElementInit = function() {
-                new parentWindow.google.translate.TranslateElement({
+            parentWindow.googleTranslateElementInit = function() {{
+                new parentWindow.google.translate.TranslateElement({{
                     pageLanguage: 'zh-TW',
                     includedLanguages: 'zh-TW,en,ja,ko',
                     layout: parentWindow.google.translate.TranslateElement.InlineLayout.SIMPLE
-                }, 'persistent_google_translate'); 
-            };
+                }}, 'persistent_google_translate'); 
+            }};
             
-            // 3. 載入 Google 翻譯腳本
             const script = parentDoc.createElement('script');
             script.id = 'google-translate-script';
             script.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
             parentDoc.body.appendChild(script);
-        }
+        }}
 
-        // 每次 Streamlit 換頁重新渲染 sidebar 時，將已經存在的翻譯套件搬移到目前的 sidebar 容器中
-        setTimeout(() => {
-            const container = parentDoc.getElementById('google_translate_container');
-            if (container && parentWindow.persistent_google_translate) {
-                container.appendChild(parentWindow.persistent_google_translate);
-            }
-        }, 300);
+        let attempts = 0;
+        const timer = setInterval(() => {{
+            const newContainer = parentDoc.getElementById('{container_id}');
+            if (newContainer && parentWindow.persistent_google_translate) {{
+                newContainer.appendChild(parentWindow.persistent_google_translate);
+                clearInterval(timer);
+            }}
+            attempts++;
+            if (attempts > 50) clearInterval(timer);
+        }}, 100);
         </script>
         """,
         height=0, width=0)

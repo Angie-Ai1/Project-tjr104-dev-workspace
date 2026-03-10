@@ -22,7 +22,7 @@ def main():
         <div class="splash-container">
             <img src="https://media.giphy.com/media/l0HlOaQcLJ2hHpYcw/giphy.gif" width="150" style="border-radius: 10px;">
             <h2 class="loading-text">🚦 正在分析全台路況數據...</h2>
-            <p class="sub-text">整合 <b>150 萬筆</b> 交通事故資料 x <b>300+</b> 夜市圖資</p>
+            <p class="sub-text">整合 <b>150 萬筆</b> 交通事故 x <b>300+個</b> 夜市位置</b> x 天氣資料</p>
             <div style="width: 300px; height: 4px; background: #eee; margin-top: 15px; border-radius: 2px;">
                 <div style="width: 100%; height: 100%; background: #ff4b4b; animation: loading 2s infinite;"></div>
             </div>
@@ -40,11 +40,11 @@ def main():
     is_overview, target_market, layers = ui.render_sidebar(df_market)
 
     # 版面配置 (左:文字介紹 / 右:全台地圖)
-    col_text, col_map = st.columns([1, 2], gap="large")
+    col_text, col_map = st.columns([2, 1], gap="large")
 
     # --- 左欄：文字介紹 ---
     with col_text:
-        st.title(f"台灣夜市與交通事故風險地圖")
+        st.title(f"夜市行人地獄(❓)：數據揭露的真相")
         st.write("---")
         st.markdown("### 🎯 專案動機")
         st.markdown("""
@@ -109,7 +109,7 @@ def main():
         )
 
         # 顯示地圖
-        st_folium(m, height=800, use_container_width=True, returned_objects=[])
+        st_folium(m, height=800, width="stretch", returned_objects=[])
 
 if __name__ == "__main__":
     main()
