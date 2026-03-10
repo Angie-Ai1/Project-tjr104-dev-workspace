@@ -31,8 +31,8 @@ def get_cache(key):
         print(f"Redis 讀取失敗: {e}")
     return None
 
-"""將資料寫入 Redis (預設存活 1 小時)"""
-def set_cache(key, value, ttl=3600):
+"""將資料寫入 Redis """
+def set_cache(key, value, ttl=864000):
     try:
         r = redis.Redis(connection_pool=REDIS_POOL)
         packed_data = pickle.dumps(value) # 壓縮成二進位

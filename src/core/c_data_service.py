@@ -23,9 +23,7 @@ def get_all_nightmarkets():
     if not engine: return pd.DataFrame()
     
     query = """
-    SELECT nightmarket_name, nightmarket_latitude, nightmarket_longitude, 
-           nightmarket_city, nightmarket_region, nightmarket_opening_hours 
-    FROM `test_night_market`.`Night_market_merge`
+    SELECT * FROM `test_night_market`.`Night_market_merge`
     """
     try:
         with engine.connect() as conn:
@@ -84,7 +82,7 @@ def get_taiwan_heatmap_data():
     cached = get_cache(cache_key)
     if cached: return cached
     engine = get_db_engine()
-    sql = "SELECT lat, lon, count FROM frontend_db.tbl_accident_heatmap WHERE count >= 3"
+    sql = "SELECT lat, lon, count FROM frontend_db_consol.tbl_accident_heatmap WHERE count >= 3"
     try:
         with engine.connect() as conn:
             df = pd.read_sql(sql, conn)
@@ -144,7 +142,7 @@ def get_nearby_accidents(lat, lon, radius_km=0.5, sample=True):
                    WHEN Hour >= 12 AND Hour < 18 THEN '午'
                    ELSE '晚'
                END AS Period
-        FROM frontend_db.`tbl_accident_analysis_final`
+        FROM frontend_db_consol.`tbl_accident_analysis_final`
         WHERE latitude BETWEEN :min_lat AND :max_lat 
           AND longitude BETWEEN :min_lon AND :max_lon
     """)
@@ -196,7 +194,7 @@ def get_pedestrian_stats_by_region_monthly():
             ELSE '南部'
         END as Region,
         COUNT(DISTINCT accident_id) as Count
-    FROM `frontend_db`.`tbl_pedestrian_accident`
+    FROM `frontend_db_consol`.`tbl_pedestrian_accident`
     GROUP BY YearMonth, Region
     ORDER BY YearMonth, Region
     """
@@ -233,7 +231,7 @@ def get_pedestrian_trend(lat=None, lon=None, radius_km=0.5):
     SELECT 
         DATE_FORMAT(accident_datetime, '%Y-%m') as YearMonth,
         COUNT(DISTINCT accident_id) as Count
-    FROM `frontend_db`.`tbl_pedestrian_accident`
+    FROM `frontend_db_consol`.`tbl_pedestrian_accident`
     {where_clause}
     GROUP BY YearMonth
     ORDER BY YearMonth
@@ -265,7 +263,7 @@ def get_accident_weather_analysis(lat, lon, radius_km=0.5):
             COUNT(*) as 件數,
             SUM(death_count) as 死亡,
             SUM(injury_count) as 受傷
-        FROM `frontend_db`.`tbl_accident_analysis_final`
+        FROM `frontend_db_consol`.`tbl_accident_analysis_final`
         WHERE latitude BETWEEN :min_lat AND :max_lat 
           AND longitude BETWEEN :min_lon AND :max_lon
         GROUP BY weather_condition

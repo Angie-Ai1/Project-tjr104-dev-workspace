@@ -11,7 +11,7 @@ default_args = {
 }
 
 with DAG(
-    'update_frontend_db_final',
+    'update_frontend_db',
     default_args=default_args,
     schedule='@monthly',
     catchup=False,

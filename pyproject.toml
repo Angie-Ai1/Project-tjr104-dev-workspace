@@ -19,7 +19,13 @@ dependencies = [
     "streamlit (>=1.53.1,<2.0.0)",
     "streamlit-folium (>=0.26.1,<0.27.0)",
     "apache-airflow (>=3.1.7,<4.0.0)",
-    "redis (>=7.2.1,<8.0.0)"
+    "redis (>=7.2.1,<8.0.0)",
+    "google-generativeai (>=0.8.6,<0.9.0)",
+    "groq (>=1.0.0,<2.0.0)",
+    "plotly (>=6.6.0,<7.0.0)",
+    "polyline (>=2.0.4,<3.0.0)",
+    "ollama (>=0.6.1,<0.7.0)",
+    "apache-airflow-providers-mysql (>=6.5.0,<7.0.0)"
 ]
 
 
