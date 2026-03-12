@@ -9,48 +9,26 @@ from contextlib import contextmanager
 import time
 import streamlit.components.v1 as components
 import uuid
+
 # ==========================================
 # 1. 側邊欄 (Sidebar)
 # ==========================================
 def render_sidebar(df_market):
-    st.sidebar.markdown("#### 🌐 語言切換 / Language")
+    st.sidebar.markdown("### 🌐 語言切換 / Language")
     render_google_translator()
-    # 導航選單
-    st.sidebar.markdown("# 夜市行人地獄(?)")
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("## 夜市老實說: 一窺事故熱點")
-    st.sidebar.page_link("r_app.py", label="專題背景", icon="🏠")
-    st.sidebar.page_link("pages/v_act1_all_accident.py", label="全台夜市事故嚴重分析", icon="🔥")
-    st.sidebar.page_link("pages/v_hist_trend.py", label="各縣市夜市事故比較分析", icon="📈")
-    st.sidebar.page_link("pages/v_act1_single_accident.py", label="單一夜市事故AI分析", icon="📊")
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("## 行人看這裡: 友善導航")
-    # 這裡要放什麼我要想一下 (可能推薦逛夜市的入口)
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("## 政府幫幫忙: 政策推行")
-    st.sidebar.page_link("pages/v_policy_impact.py", label="禮讓行人政策即時監控", icon="⚖️")
-    st.sidebar.page_link("pages/v_tableau.py", label="歷史車禍數據看板 (Tableau)", icon="🖼️") 
-
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("## 持續開發中")
-    st.sidebar.page_link("pages/v_act6_chat.py", label="AI 小幫手", icon="💬")
-    st.sidebar.markdown("---")  
-
-    
-    # 加入組員頁面
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("## 夜市行人地獄專題")
-    st.sidebar.page_link("pages/v_act2_overview.py", label="夜市老實說", icon="📝")
-    st.sidebar.page_link("pages/v_act3_avoid.py", label="行人看這裡", icon="🚶")
-    st.sidebar.page_link("pages/v_act4_gov.py", label="政府幫幫忙", icon="🏛️")
-
-
-    # st.sidebar.header("🔍 篩選導航")
-    # layers = {
-    #     "traffic_heat": st.sidebar.checkbox("🔥 全台車禍熱區", value=True, key='show_traffic_heat'),
-    #     "night_market": st.sidebar.checkbox("🏠 夜市位置", value=True, key='show_night_market'),
-    #     "weather": st.sidebar.checkbox("🌧️ 降雨熱力", key='show_weather'),
-    #     "accidents": st.sidebar.checkbox("🔵 周邊事故詳情", key='show_accidents')}
+    # 側邊欄結構
+    st.sidebar.markdown("## 數據揭密")
+    st.sidebar.page_link("r_app.py", label="🏠 首頁")
+    st.sidebar.page_link("pages/v_act1_all_accident.py", label="全台夜市事故總體檢", icon="🗺️")
+    st.sidebar.page_link("pages/v_act1_city_accident.py", label="縣市安全對標與趨勢", icon="🏙️")
+    st.sidebar.page_link("pages/v_act1_single_accident.py", label="單一夜市 AI 深度診斷", icon="🔍")
+    st.sidebar.markdown("## 化數據為行動")
+    st.sidebar.page_link("pages/v_act2_policy.py", label="政策成效即時監控", icon="⚖️")
+    st.sidebar.page_link("pages/v_act2_tableau.py", label="政策成效歷史數據 (Tableau)", icon="📈") 
+    st.sidebar.page_link("pages/v_act2_avoid.py", label="友善步行導航路線", icon="🧭")
+    st.sidebar.markdown("### 持續開發中")
+    st.sidebar.page_link("pages/v_act3_chat.py", label="AI交通小幫手", icon="💬")
+    st.sidebar.page_link("pages/v_act3_policy_impact.py", label="政策成效初版", icon="⚖️")
 
     layers = {
         "traffic_heat": True,
@@ -73,7 +51,7 @@ def page_timer():
     _ = end_time - start_time
     
 # ==========================================
-# 2. 地圖 (Map) 
+# 地圖
 # ==========================================
 def build_map(is_overview, target_market, layers, dynamic_zoom, radius_m, traffic_global, df_local, df_market, custom_tiles="CartoDB positron"):
     if is_overview: 
@@ -158,7 +136,7 @@ def build_map(is_overview, target_market, layers, dynamic_zoom, radius_m, traffi
     return m # 將畫好的地圖交還給主程式
 
 # ==========================================
-# 3. 外國觀光客友善（多國語系翻譯）
+# 外國觀光客友善（多國語系翻譯）
 # ==========================================
 def render_google_translator():
     container_id = f"google_translate_{uuid.uuid4().hex}"
@@ -202,3 +180,28 @@ def render_google_translator():
         </script>
         """,
         height=0, width=0)
+
+# ==========================================
+# 所有頁面的卡片、標題、KPI 樣式
+# ==========================================
+def load_custom_css():
+    st.markdown("""
+    <style>
+        /* 共用：PDI 危險指數卡片 */
+        .pdi-card { padding: 18px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); transition: 0.2s; height: 100%; color: white; margin-bottom: 10px;}
+        .pdi-card:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0,0,0,0.25); }
+        
+        /* 共用：標題與區塊排版 */
+        .title-highlight { color: #e11d48; font-weight: bold; }
+        .section-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; color: #333; }
+        div[data-testid="stVerticalBlock"] > div { padding-bottom: 0rem; }
+        
+        /* 共用：KPI 數據方塊 (用於各縣市比較頁面) */
+        .kpi-box { background-color: #f8f9fa; padding: 10px; border-radius: 8px; text-align: center; border: 1px solid #e5e7eb; }
+        .kpi-title { font-size: 13px; color: #6b7280; margin-bottom: 2px; }
+        .kpi-value { font-size: 22px; font-weight: bold; color: #111827; }
+        .kpi-delta { font-size: 12px; font-weight: bold; }
+        .delta-good { color: #10b981; }
+        .delta-bad { color: #ef4444; }
+    </style>
+    """, unsafe_allow_html=True)

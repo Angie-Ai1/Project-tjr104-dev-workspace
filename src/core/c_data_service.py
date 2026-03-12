@@ -10,14 +10,13 @@ import streamlit as st
 #  1. 夜市資料
 # =========================================================
 def get_all_nightmarkets():
-    cache_key = "market:list_all_auto" 
+    # ⭐ 變更 Key 強制清除舊快取
+    cache_key = "market:list_all_auto_v3" 
     cached = get_cache(cache_key)
     if cached is not None:
         df_cached = pd.DataFrame(cached)
-        if 'District' in df_cached.columns and 'City' in df_cached.columns:
+        if 'AdminDistrict' in df_cached.columns and 'Region' in df_cached.columns:
             return df_cached
-        else:
-            print("快取資料缺少欄位(尚未更新)，正在自動更新...")
 
     engine = get_db_engine()
     if not engine: return pd.DataFrame()
@@ -33,8 +32,14 @@ def get_all_nightmarkets():
         df['lat'] = pd.to_numeric(df['nightmarket_latitude'], errors='coerce')
         df['lon'] = pd.to_numeric(df['nightmarket_longitude'], errors='coerce')
         df['MarketName'] = df['nightmarket_name']
-        df['City'] = df['nightmarket_city']
-        df['District'] = df['nightmarket_region'] 
+        
+        # ⭐ 根據您截圖的資料庫結構，精準綁定四層級：
+        df['Region'] = df['nightmarket_region']             # 第一層：北部
+        df['City'] = df['nightmarket_city']                 # 第二層：臺北市
+        df['AdminDistrict'] = df['nightmarket_zipcode_name']# 第三層：中正區/大同區
+        
+        # 向後相容舊程式碼
+        df['District'] = df['Region'] 
         
         result = df.dropna(subset=['lat', 'lon'])
         set_cache(cache_key, result.to_dict('records'), ttl=86400)
@@ -279,3 +284,58 @@ def get_accident_weather_analysis(lat, lon, radius_km=0.5):
     except Exception as e:
         print(f"天氣分析失敗: {e}")
         return pd.DataFrame()
+
+# 危險等級判別
+def get_dynamic_level(val, avg_val):
+    if avg_val == 0: return "🟢 安全"
+    if val > avg_val * 1.3: return "🔴 極危險"
+    elif val > avg_val * 1.2: return "🟠 危險"
+    elif val > avg_val * 1.1: return "🟡 注意"
+    else: return "🟢 安全"
+
+# 排名計算邏輯
+def calculate_rank_changes(df, entity_col, metric_col, top_n=5, ascending=False, time_col='Year'):
+    if df.empty: return pd.DataFrame()
+    
+    # 判斷是計算總數還是加總分數
+    if metric_col == 'accident_id':
+        yearly_df = df.groupby([time_col, entity_col])[metric_col].count().reset_index()
+    else:
+        yearly_df = df.groupby([time_col, entity_col])[metric_col].sum().reset_index()
+        
+    yearly_df = yearly_df.rename(columns={metric_col: 'metric_val'})
+    yearly_df['Rank'] = yearly_df.groupby(time_col)['metric_val'].rank(ascending=ascending, method='first')
+    
+    rank_pivot = yearly_df.pivot(index=entity_col, columns=time_col, values='Rank')
+    years = sorted(yearly_df[time_col].unique(), reverse=True)
+    display_years = [y for y in years if int(y) >= 2023]
+    
+    result_dict = {}
+    for y in display_years:
+        # 兼容字串或整數的年份格式
+        prev_y = type(y)(int(y) - 1) 
+        current_top = yearly_df[(yearly_df[time_col] == y) & (yearly_df['Rank'] <= top_n)].sort_values('Rank')
+        
+        formatted_list = []
+        for _, row in current_top.iterrows():
+            entity = row[entity_col]
+            curr_rank = row['Rank']
+            
+            if prev_y in rank_pivot.columns and not pd.isna(rank_pivot.at[entity, prev_y]):
+                prev_rank = rank_pivot.at[entity, prev_y]
+                diff = prev_rank - curr_rank
+                if diff > 0: trend = f"🔼 {int(diff)}"
+                elif diff < 0: trend = f"🔽 {int(-diff)}"
+                else: trend = "➖"
+            else:
+                trend = "🆕"
+            formatted_list.append(f"{entity} ({trend})")
+            
+        while len(formatted_list) < top_n:
+            formatted_list.append("-")
+        result_dict[str(y)] = formatted_list
+        
+    res_df = pd.DataFrame(result_dict)
+    if not res_df.empty:
+        res_df.insert(0, '名次', [f"第 {i} 名" for i in range(1, top_n + 1)])
+    return res_df

@@ -29,54 +29,7 @@ def fetch_redis_stats(year):
         return pd.DataFrame()
     except Exception as e:
         return pd.DataFrame()
-
-def build_rank_change_table(df, entity_col):
-    if df.empty: return pd.DataFrame()
     
-    yearly_df = df.groupby(['year', entity_col])['pdi'].sum().reset_index()
-    # 使用 method='first' 強制排序，避免抓出超過 10 筆資料
-    yearly_df['Rank'] = yearly_df.groupby('year')['pdi'].rank(ascending=False, method='first')
-    
-    rank_pivot = yearly_df.pivot(index=entity_col, columns='year', values='Rank')
-    years = sorted(yearly_df['year'].unique(), reverse=True)
-    display_years = [y for y in years if y >= 2023]
-    
-    result_dict = {}
-    for y in display_years:
-        prev_y = y - 1
-        current_top10 = yearly_df[(yearly_df['year'] == y) & (yearly_df['Rank'] <= 10)].sort_values('Rank')
-        
-        formatted_list = []
-        for _, row in current_top10.iterrows():
-            entity = row[entity_col]
-            curr_rank = row['Rank']
-            
-            if prev_y in rank_pivot.columns and not pd.isna(rank_pivot.at[entity, prev_y]):
-                prev_rank = rank_pivot.at[entity, prev_y]
-                diff = prev_rank - curr_rank
-                if diff > 0: trend = f"🔼 {int(diff)}"
-                elif diff < 0: trend = f"🔽 {int(-diff)}"
-                else: trend = "➖"
-            else:
-                trend = "🆕"
-            formatted_list.append(f"{entity} ({trend})")
-            
-        while len(formatted_list) < 10:
-            formatted_list.append("-")
-        result_dict[str(y)] = formatted_list
-        
-    res_df = pd.DataFrame(result_dict)
-    if not res_df.empty:
-        res_df.insert(0, '名次', [f"第 {i} 名" for i in range(1, 11)])
-    return res_df
-
-def get_dynamic_level(val, avg_val):
-    if avg_val == 0: return "🟢 安全"
-    if val > avg_val * 1.3: return "🔴 極危險"
-    elif val > avg_val * 1.2: return "🟠 危險"
-    elif val > avg_val * 1.1: return "🟡 注意"
-    else: return "🟢 安全"
-
 def main():
     df_market = ds.get_all_nightmarkets()
     ui.render_sidebar(df_market)
@@ -243,7 +196,7 @@ def main():
             st.markdown(f"#### 📉 歷年夜市排行變化 (Top 10)")
             if not df_all_years.empty:
                 city_hist_df = df_all_years[df_all_years['nightmarket_city'] == sel_city]
-                mkt_rank_table = build_rank_change_table(city_hist_df, 'nightmarket_name')
+                mkt_rank_table = ds.calculate_rank_changes(city_hist_df, 'nightmarket_name', 'pdi', top_n=10, time_col='year')
                 if not mkt_rank_table.empty:
                     st.dataframe(mkt_rank_table, use_container_width=True, hide_index=True)
                 else:
