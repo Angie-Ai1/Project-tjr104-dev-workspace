@@ -1,7 +1,8 @@
-from utils.sidebar import sidebar_filters
+## 組員原本內容 - 為改從Redis快取, 整段刪除
+    # from utils.sidebar import sidebar_filters
+    # from core.c_db import load_night_markets, load_accidents 
 from folium.plugins import HeatMap
 from streamlit_folium import st_folium
-from core.c_db import load_night_markets, load_accidents
 import streamlit as st
 import pandas as pd
 import folium
@@ -10,54 +11,64 @@ import re
 import random
 import utils.market_tools as mt
 
-# -----------------------------------------------------
-# nm_df (夜市資料) - DataFrame
-# -----------------------------------------------------
-nm_df = load_night_markets() 
-
-# -----------------------------------------------------
-# accidents_df (事故資料) - DataFrame
-# -----------------------------------------------------
-accidents_df = load_accidents(columns="accident_id, latitude, longitude, death_count, injury_count, accident_datetime")
-
-accidents_df["accident_datetime"] = pd.to_datetime(accidents_df["accident_datetime"])
-accidents_df["accident_weekday"] = accidents_df["accident_datetime"].dt.weekday
-accidents_df["accident_hour"] = accidents_df["accident_datetime"].dt.hour
+# ✅ 新增：引用時間篩選函式與相關模組
+import core.c_data_service as ds
+import core.c_ui as ui
+from core.c_db import load_night_markets # ✅ 務必加回這個，以取得完整邊界座標
 
 # ---------------------------------------------------------
 # 主頁面
 # ---------------------------------------------------------
 def render_home():
 
-    # ⭐ 每次進入章節時清掉舊資料（避免AI詢問資料重複累積）
+    # 每次進入章節時清掉舊資料（避免AI詢問資料重複累積）
     if "page_data" in st.session_state:
         st.session_state["page_data"].clear()
 
-    # -----------------------------------------------------
-    # 定義兩個函式給 sidebar_filters 使用
-    # -----------------------------------------------------
-    def load_city_list():
-        return nm_df["nightmarket_city"].drop_duplicates().tolist()
+    # ✅ 1. 這裡必須用 load_night_markets()，PDI 計算才不會崩潰
+    nm_df = load_night_markets()
 
-    def load_market_by_city(city):
-        return nm_df[nm_df["nightmarket_city"] == city]["nightmarket_name"].tolist()
-    # -----------------------------------------------------
-    # 篩選縣市、夜市、日期篩選資料和日期類型
-    # -----------------------------------------------------
-    # 1. 取得 sidebar 的篩選結果
-    selected_city, selected_market, date_filtered_df, date_filter_type, date_info = sidebar_filters(
-    load_city_list,
-    load_market_by_city,
-    accidents_df
-)
+    # ✅ 改用頂部三欄式版型與 Redis 快取讀取
+    st.markdown("""
+    <div class="sticky-header">
+        <h2 class="header-title" style="margin-bottom: 10px;">夜市行人地獄(❓)：數據揭露的真相</h2>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # 2. 在這裡建立 filters（使用者選的條件）
-    filters = {
-    "city": selected_city,
-    "market": selected_market,
-    "filter_type": date_filter_type,
-    **date_info
-}
+    c_target, c_time, c_kpi = st.columns([1.2, 1.2, 2.6], gap="large")
+
+    with c_target:
+        st.markdown("📍 1. 選擇目標")
+        # ✅ 對應完整資料表的欄位名稱
+        city_list = nm_df["nightmarket_city"].dropna().unique().tolist()
+        default_city = "臺北市" if "臺北市" in city_list else city_list[0]
+        selected_city = st.selectbox("縣市", city_list, index=city_list.index(default_city), label_visibility="collapsed", key="act1_city")
+
+        market_list = nm_df[nm_df["nightmarket_city"] == selected_city]["nightmarket_name"].tolist()
+        default_market = "士林夜市" if "士林夜市" in market_list else market_list[0]
+        selected_market = st.selectbox("夜市", market_list, index=market_list.index(default_market), label_visibility="collapsed", key="act1_market")
+
+    # ✅ 從 Redis 秒速撈取該夜市周邊資料
+    target_nm = nm_df[nm_df["nightmarket_name"] == selected_market].iloc[0]
+    with st.spinner(f"正在載入 {selected_market} 周邊事故資料..."):
+        local_df, _, _, _ = ds.get_nearby_accidents(target_nm['nightmarket_latitude'], target_nm['nightmarket_longitude'], radius_km=3.0, sample=False)
+        
+    if local_df.empty:
+        st.warning(f"⚠️ {selected_market} 周邊暫無事故資料")
+        return
+        
+    if "primary_cause" in local_df.columns:
+        local_df = local_df.rename(columns={"primary_cause": "cause_analysis_minor_primary", "party_action": "party_action_major"})
+    local_df["accident_datetime"] = pd.to_datetime(local_df["accident_datetime"])
+    if "accident_id" not in local_df.columns:
+        local_df["accident_id"] = local_df.index.astype(str)
+
+    # ✅ 呼叫共用時間篩選器
+    with c_time:
+        date_filtered_df = ui.render_time_filter(local_df, key_prefix="act1")
+        if date_filtered_df.empty:
+            return  
+
     # -----------------------------------------------------
     # V1 洞察（generate_insight）
     # -----------------------------------------------------
@@ -85,10 +96,10 @@ def render_home():
     </div>
     """, unsafe_allow_html=True)
 
-
     st.markdown("""
     <div style="height: 40px;"></div>
     """, unsafe_allow_html=True)
+    
     # -----------------------------------------------------
     # 正文開始
     # -----------------------------------------------------   
@@ -113,179 +124,51 @@ def render_home():
 </h4>
 """, unsafe_allow_html=True)
 
-    st.markdown(f"""
+    st.markdown(
+        """
+        <div style="font-size: 20px;">
 
-<div style="font-size: 20px;">
+        <div style="
+                width: 100%;
+                height: 0.5px;
+                background: linear-gradient(90deg, white, rgba(0,0,0,0.15));
+                border-radius: 3px;
+                margin: 8px 0 14px 0;
+        "></div>
+            外媒直指臺灣街頭是<b style="color:red;">「行人地獄」</b>，交通事故死亡人數驚人。城市規劃偏車不偏人、駕駛陋習成常態，讓過馬路像賭命！
+        <div style="height: 15px;"></div>
+        <div style="font-size: 24px;">
+        🚦 <span style="margin-right:10px;">為什麼 — </span>我們<b style="color:#1e90ff;"> 關注 </b>夜市安全？
+        </div>
+        <div style="
+                background-color: #f0f2f6;
+                padding: 15px;
+                border-radius: 5px;
+                color: #222;
+                font-weight: 500;
+                margin-top: 10px;
+                border-left: 4px solid #ff4b4b;
+                font-size: 20px;
+            ">
+            我們用數據工程打造互動地圖：解析肇因比例、即時告警、用路人評論，
+            甚至串接天氣 / 人流 / 節慶，揭露雨夜塞車、寒流車速亂飆的隱藏殺機。
+        </div>
+        </div>
+            """,
+        unsafe_allow_html=True,
+    )
 
-<div style="
-        width: 100%;
-        height: 0.5px;
-        background: linear-gradient(90deg, white, rgba(0,0,0,0.15));
-        border-radius: 3px;
-        margin: 8px 0 14px 0;
-"></div>
-    外媒直指臺灣街頭是<b style="color:red;">「行人地獄」</b>，交通事故死亡人數驚人。城市規劃偏車不偏人、駕駛陋習成常態，讓過馬路像賭命！
-<div style="height: 15px;"></div>
-<div style="font-size: 24px;">
-  🚦 <span style="margin-right:10px;">為什麼 — </span>我們<b style="color:#1e90ff;"> 關注 </b>夜市安全？
-</div>
-<div style="
-        background-color: #f0f2f6;
-        padding: 15px;
-        border-radius: 5px;
-        color: #222;
-        font-weight: 500;
-        margin-top: 10px;
-        border-left: 4px solid #ff4b4b;
-        font-size: 20px;
-    ">
-    我們用數據工程打造互動地圖：解析肇因比例、即時告警、用路人評論，
-    甚至串接天氣 / 人流 / 節慶，揭露雨夜塞車、寒流車速亂飆的隱藏殺機。
-</div>
-</div>
-    """, unsafe_allow_html=True)
-
-    # -----------------------------------------------------
-    # 日夜熱力圖（圓形 + 標籤 + 事故點）
-    # -----------------------------------------------------
     st.markdown(""" *** """)
-    st.subheader(f"📍 {selected_market} — 事故熱點地圖（可切換圖層）")
-    st.markdown("""
-    <hr style="
-        border: 0;
-        height: 4px;
-        background: linear-gradient(90deg, #fdd835, #fff59d);
-        border-radius: 2px;
-    ">
-    """, unsafe_allow_html=True)
 
-    # 自訂標題（可完全控制字體大小）
-    st.markdown("""
-    <div style="
-        font-size: 20px;
-        font-weight: 800;
-        color: #FFD54F;
-        margin-bottom: 6px;
-    ">
-        選擇事故熱力圖類型
-    </div>
-    """, unsafe_allow_html=True)
+    # ✅ 保留日夜資料切割與中心座標 (供 AI summary 與後續 PDI 地圖運算使用，不再繪製日夜熱力圖)
+    center_lat = target_nm["nightmarket_latitude"]
+    center_lon = target_nm["nightmarket_longitude"]
 
-    # selectbox 本身不顯示標題
-    heat_mode = st.selectbox(
-        "",
-        ["☀️ 白天事故熱力圖", "🌙 夜間事故熱力圖"]
-    )
-
-    # 中心點
-    current_nm = nm_df[nm_df["nightmarket_name"] == selected_market].iloc[0]
-    center_lat = current_nm["nightmarket_latitude"]
-    center_lon = current_nm["nightmarket_longitude"]
-
-    # 建立地圖
-    m = folium.Map(
-        location=[center_lat, center_lon],
-        zoom_start=16,
-        tiles="OpenStreetMap"
-    )
-
-    # 夜市圓形 + 標籤
-    for _, row in nm_df.iterrows():
-        folium.Circle(
-            location=[row["nightmarket_latitude"], row["nightmarket_longitude"]],
-            radius=180,
-            color="#F5A25D",
-            weight=2,
-            fill=True,
-            fill_color="#FDEBD0",
-            fill_opacity=0.35
-        ).add_to(m)
-
-        folium.Marker(
-            location=[
-                row["nightmarket_latitude"] + 0.0006,
-                row["nightmarket_longitude"] - 0.0006
-            ],
-            icon=folium.DivIcon(
-                html=f"""
-    <div style="
-        font-size:16px;
-        font-weight:bold;
-        color:#FF8C42;
-        text-shadow:
-            -0.14px -0.14px 0 #000,
-            0.14px -0.14px 0 #000,
-            -0.14px  0.14px 0 #000,
-            0.14px  0.14px 0 #000;
-    ">
-        {row["nightmarket_name"]}
-    </div>
-    """
-            )
-        ).add_to(m)
-
-    # 事故點權重
-    date_filtered_df["heat_weight"] = date_filtered_df.apply(
-        lambda r: 5 if r["death_count"] > 0 else (2 if r["injury_count"] > 0 else 1),
-        axis=1
-    )
-
-    # 白天 / 夜間資料切割
     date_filtered_df["acc_time"] = pd.to_datetime(date_filtered_df["accident_datetime"])
     date_filtered_df["hour"] = date_filtered_df["acc_time"].dt.hour
-
     day_df = date_filtered_df[(date_filtered_df["hour"] >= 6) & (date_filtered_df["hour"] < 18)]
     night_df = date_filtered_df[(date_filtered_df["hour"] >= 18) | (date_filtered_df["hour"] < 6)]
 
-    # ⭐ 根據選擇決定要畫哪一組資料（事故點 + 熱力圖都用這組）
-    if heat_mode == "☀️ 白天事故熱力圖":
-        plot_df = day_df
-        layer = folium.FeatureGroup(name="☀️ 白天事故熱力圖")
-    else:
-        plot_df = night_df
-        layer = folium.FeatureGroup(name="🌙 夜間事故熱力圖")
-
-    # ⭐ 熱力圖
-    HeatMap(
-        plot_df[["latitude", "longitude", "heat_weight"]].values.tolist(),
-        radius=18,
-        blur=15,
-        min_opacity=0.3
-    ).add_to(layer)
-
-    layer.add_to(m)
-
-    # ⭐ 事故點（小圓點）
-    for _, row in plot_df.iterrows():    
-
-        # 顏色分類
-        if row["death_count"] > 0:
-            color = "#FF1744"   # 死亡（紅）
-        elif row["injury_count"] > 0:
-            color = "#0033cc"   # 受傷（藍）
-        else:
-            color = "#90CAF9"   # 無死傷（淺藍）
-
-        # tooltip（合併你原本的資訊）
-        tooltip_text = (
-            f"事故ID: {row['accident_id']}<br>"
-            f"死傷: {row['death_count']}死 / {row['injury_count']}傷<br>"
-            f"時間: {row['accident_datetime']}<br>"
-        )
-
-        folium.CircleMarker(
-            location=[row["latitude"], row["longitude"]],
-            radius=5,
-            color=color,
-            fill=True,
-            fill_color=color,
-            fill_opacity=0.8,
-            tooltip=tooltip_text
-        ).add_to(m)
-
-  
-   # 顯示地圖
-    st_folium(m, width=700, height=450, returned_objects=[])
 
     # -----------------------------------------------------
     # 區塊 2：PDI 說明
@@ -314,7 +197,6 @@ def render_home():
     | 0–10 🟢 安全 | 11–30 🟡 注意 | 31–60 🟠 危險 |  >60 🔴 極危險 | ⚠️ PDI = Σ（事故嚴重度 × 時段權重）
     """)
 
-
     # -----------------------------------------------------
     # 1. 計算 PDI（使用工具版）
     # -----------------------------------------------------
@@ -324,7 +206,7 @@ def render_home():
     pdi_raw["nightmarket_name"] = pdi_raw["nightmarket_name"].str.strip()
     nm_df["nightmarket_name"] = nm_df["nightmarket_name"].str.strip()
 
-    # ⭐ 帶入 nightmarket_id + nightmarket_city
+    # 帶入 nightmarket_id + nightmarket_city
     pdi_raw = pdi_raw.merge(
         nm_df[["nightmarket_name", "nightmarket_id", "nightmarket_city"]],
         on="nightmarket_name",
@@ -375,7 +257,7 @@ def render_home():
     """, unsafe_allow_html=True)
 
     st.markdown(""" *** """)
-                
+
     st.markdown("""
     <div style="
         width: 100%;
@@ -398,22 +280,15 @@ def render_home():
         unsafe_allow_html=True
     )
 
-    # 找到該夜市資料
-    nm_row = nm_df[nm_df["nightmarket_name"] == selected_market].iloc[0]
-
-    center_lat = nm_row["nightmarket_latitude"]
-    center_lon = nm_row["nightmarket_longitude"]
-
-
-    # ⭐ 使用工具版邏輯計算每筆事故的 PDI 權重
-    def calculate_pdi_points(acc_df, nm_row):
+    # 使用工具版邏輯計算每筆事故的 PDI 權重
+    def calculate_pdi_points(acc_df, target_nm):
         WEIGHT_DEATH = 5
         WEIGHT_INJURY = 2
         WEIGHT_OPEN = 3
         WEIGHT_CLOSE = 1
 
-        bbox = mt.get_bbox(nm_row)
-        opening_hours = mt.parse_opening_hours(nm_row["nightmarket_opening_hours"])
+        bbox = mt.get_bbox(target_nm)
+        opening_hours = mt.parse_opening_hours(target_nm["nightmarket_opening_hours"])
 
         acc_in_nm = acc_df[
             acc_df.apply(
@@ -422,7 +297,7 @@ def render_home():
             )
         ].copy()
 
-        # ⭐ 防呆：如果沒有資料或沒有欄位，直接回傳空 DF
+        # 防呆：如果沒有資料或沒有欄位，直接回傳空 DF
         if acc_in_nm.empty or acc_in_nm.shape[1] == 0:
             return pd.DataFrame(columns=["latitude", "longitude", "pdi_weight"])
 
@@ -440,7 +315,7 @@ def render_home():
         return acc_in_nm
 
 
-    nm_acc = calculate_pdi_points(date_filtered_df, nm_row)
+    nm_acc = calculate_pdi_points(date_filtered_df, target_nm)
 
     # folium 地圖
     pdi_map = folium.Map(
@@ -463,8 +338,8 @@ def render_home():
     # 夜市範圍框
     folium.Rectangle(
         bounds=[
-            [nm_row["nightmarket_southwest_latitude"], nm_row["nightmarket_southwest_longitude"]],
-            [nm_row["nightmarket_northeast_latitude"], nm_row["nightmarket_northeast_longitude"]]
+            [target_nm["nightmarket_southwest_latitude"], target_nm["nightmarket_southwest_longitude"]],
+            [target_nm["nightmarket_northeast_latitude"], target_nm["nightmarket_northeast_longitude"]]
         ],
         color="#FF8C42",
         weight=2,
@@ -630,7 +505,6 @@ text-shadow:0px 1px 2px rgba(0,0,0,0.28);
     st.markdown(cards_html, unsafe_allow_html=True)
     mt.pdi_divider(last_level)
 
-
     # -----------------------------------------------------
     # ⭐ 第一章 AI 所需資訊 (自動化 summary_text)
     # -----------------------------------------------------
@@ -653,4 +527,8 @@ if __name__ == "__main__":
     import sys
     import os
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+    import core.c_data_service as ds
+    import core.c_ui as ui
+    df_market = ds.get_all_nightmarkets()
+    ui.render_sidebar(df_market)
     render_home()

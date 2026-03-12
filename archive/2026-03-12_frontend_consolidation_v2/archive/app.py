@@ -3,12 +3,12 @@ import streamlit as st
 # AI 小幫手
 # -------------------------
 st.set_page_config(page_title="Map Chat", page_icon="💬")
-from pages.act1_home import render_home     ## home.py -> pages/act1_home.py
-from pages.v_act3_overview import act2_render ## page -> pages
-from pages.v_act2_avoid import act3_render    ## page -> pages
-from pages.v_act4_gov import act4_render      ## page -> pages
-from pages.v_act2_policy import act5_render   ## page -> pages
-from pages.v_act3_chat import act6_render     ## page -> pages
+from pages.v_act1_home import render_home
+from pages.v_act3_overview import act2_render
+from pages.v_act2_avoid import act3_render
+from pages.v_act4_gov import act4_render
+from pages.v_act2_policy import act5_render
+from pages.v_act3_chat import act6_render
 
 # -------------------------
 # Sidebar 背景底圖

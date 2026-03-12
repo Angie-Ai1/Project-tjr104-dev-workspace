@@ -1,4 +1,4 @@
-from utils.sidebar import sidebar_filters
+# from utils.sidebar import sidebar_filters
 from folium.plugins import HeatMap
 from streamlit_folium import st_folium
 from core.c_db import load_night_markets, load_accidents, load_env_factors
@@ -232,61 +232,61 @@ def act4_render():
     </div>
     """, unsafe_allow_html=True)
 
-    # -----------------------------------------------------
-    #  事故相關 — 全台事故密度地圖 (Density Map) 
-    # -----------------------------------------------------
+                                    #     # -----------------------------------------------------
+                                    #     #  事故相關 — 全台事故密度地圖 (Density Map) 
+                                    #     # -----------------------------------------------------
 
-    st.markdown("""
-<hr style="
-    border: 0;
-    height: 4px;
-    background: linear-gradient(90deg, #fdd835, #fff59d);
-    border-radius: 2px;
-">
-""", unsafe_allow_html=True)
-    st.markdown(
-    f"""
-    <h3 style='font-size:25px; font-weight:600; margin-bottom:10px;'>
-        🗺️ 全台事故密度地圖（Density Map）
-    </h3>
-    """,
-    unsafe_allow_html=True
-)
-    st.markdown("""
-<div style="
-    width: 100%;
-    height: 0.5px;
-    background: linear-gradient(90deg, white, rgba(255,255,255,0.2));
-    border-radius: 3px;
-"></div>
-""", unsafe_allow_html=True)
-    
-    # 台灣中心點（台中）
-    taiwan_center = [23.7, 120.97]
+                                    #     st.markdown("""
+                                    # <hr style="
+                                    #     border: 0;
+                                    #     height: 4px;
+                                    #     background: linear-gradient(90deg, #fdd835, #fff59d);
+                                    #     border-radius: 2px;
+                                    # ">
+                                    # """, unsafe_allow_html=True)
+                                    #     st.markdown(
+                                    #     f"""
+                                    #     <h3 style='font-size:25px; font-weight:600; margin-bottom:10px;'>
+                                    #         🗺️ 全台事故密度地圖（Density Map）
+                                    #     </h3>
+                                    #     """,
+                                    #     unsafe_allow_html=True
+                                    # )
+                                    #     st.markdown("""
+                                    # <div style="
+                                    #     width: 100%;
+                                    #     height: 0.5px;
+                                    #     background: linear-gradient(90deg, white, rgba(255,255,255,0.2));
+                                    #     border-radius: 3px;
+                                    # "></div>
+                                    # """, unsafe_allow_html=True)
+                                        
+                                    #     # 台灣中心點（台中）
+                                    #     taiwan_center = [23.7, 120.97]
 
-    m = folium.Map(
-        location=taiwan_center,
-        zoom_start=7.4,
-        tiles="OpenStreetMap"
-    )
+                                    #     m = folium.Map(
+                                    #         location=taiwan_center,
+                                    #         zoom_start=7.4,
+                                    #         tiles="OpenStreetMap"
+                                    #     )
 
-    # 權重（
-    date_filtered_df["heat_weight"] = date_filtered_df.apply(
-        lambda r: 5 if r["death_count"] > 0 else (2 if r["injury_count"] > 0 else 1),
-        axis=1
-    )
+                                    #     # 權重（
+                                    #     date_filtered_df["heat_weight"] = date_filtered_df.apply(
+                                    #         lambda r: 5 if r["death_count"] > 0 else (2 if r["injury_count"] > 0 else 1),
+                                    #         axis=1
+                                    #     )
 
-    # 熱力圖
-    HeatMap(
-        date_filtered_df[["latitude", "longitude", "heat_weight"]].values.tolist(),
-        radius=18,
-        blur=15,
-        min_opacity=0.3
-    ).add_to(m)
+                                    #     # 熱力圖
+                                    #     HeatMap(
+                                    #         date_filtered_df[["latitude", "longitude", "heat_weight"]].values.tolist(),
+                                    #         radius=18,
+                                    #         blur=15,
+                                    #         min_opacity=0.3
+                                    #     ).add_to(m)
 
-    st_folium(m, width=700, height=450)
+                                    #     st_folium(m, width=700, height=450)
 
-    st.markdown(""" *** """)
+                                    #     st.markdown(""" *** """)
 
     # -----------------------------------------------------
     # 城市排行榜（City Ranking）

@@ -1,4 +1,4 @@
-from utils.sidebar import sidebar_filters
+# from utils.sidebar import sidebar_filters
 from folium.plugins import HeatMap
 from streamlit_folium import st_folium
 from folium.features import DivIcon

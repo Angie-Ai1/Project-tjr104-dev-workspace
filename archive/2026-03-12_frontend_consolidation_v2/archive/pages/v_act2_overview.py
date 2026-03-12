@@ -1,7 +1,7 @@
 from folium.plugins import HeatMap, HeatMapWithTime, MarkerCluster
 from streamlit_folium import st_folium
 from streamlit.components.v1 import html
-from utils.sidebar import sidebar_filters
+# from utils.sidebar import sidebar_filters
 from core.c_db import load_night_markets, load_accidents, load_env_factors, load_human_factors
 import streamlit as st
 import pandas as pd
